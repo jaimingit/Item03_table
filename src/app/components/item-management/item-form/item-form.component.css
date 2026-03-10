@@ -1,0 +1,165 @@
+/* ── Shared inline form row ── */
+.inline-form-row {
+  display: table-row;
+  width: 100%;
+  vertical-align: middle;
+  transition: background var(--transition-fast), border-left var(--transition-fast);
+}
+
+/* Cell padding & border like main table */
+.inline-form-row td {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* First & last td fixed width like main table */
+.inline-form-row td:first-child {
+  width: 40px; /* icon/expand column */
+  text-align: center;
+}
+.inline-form-row td:last-child {
+  width: 140px; /* action buttons */
+  text-align: center;
+}
+
+/* Insert & Edit row highlight */
+.inline-form-row.insert-mode {
+  background: #f0fdf4;
+  border-left: 3px solid var(--success);
+  box-shadow: inset 0 1px 0 #bbf7d0, inset 0 -1px 0 #bbf7d0;
+}
+.inline-form-row.edit-mode {
+  background: #eff6ff;
+  border-left: 3px solid var(--primary);
+  box-shadow: inset 0 1px 0 #bfdbfe, inset 0 -1px 0 #bfdbfe;
+}
+
+/* Mode icon */
+.form-mode-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+.insert-mode .form-mode-icon { color: var(--success); }
+.edit-mode   .form-mode-icon { color: var(--primary); }
+
+/* Inline field wrapper */
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Badge preview — match main table row height */
+.inline-badge-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px; /* matches .item-badge height */
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Text inputs — match table row height */
+.inline-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: #fff;
+  width: 100%;       /* fill full cell */
+  min-width: 120px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.inline-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.inline-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Placeholder dash for empty/readonly */
+.form-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Auto seq badge on process form */
+.form-seq-badge {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Type 1 / 2 toggle buttons — same height as inputs */
+.type-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.type-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  background: #fff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  height: 28px; /* match badge/input height */
+}
+
+.type-btn:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+.type-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.type-btn:hover:not(.active) {
+  background: var(--bg-hover);
+}
+
+/* Highlight parent item/process row while editing */
+.row-editing {
+  background: #eff6ff !important;
+  border-left: 3px solid var(--primary);
+}
+
+.process-row-editing {
+  background: #f0fdf4 !important;
+  border-left: 3px solid var(--success);
+}
+
+/* Process form inside mini-table — tighter padding */
+.process-form-row td {
+  padding: 6px var(--space-sm);
+}
+
+.process-form-row .inline-input {
+  width: 100%;
+  min-width: 80px;
+  height: 28px; /* match table mini-row height */
+  box-sizing: border-box;
+}

@@ -1,0 +1,11 @@
+<div class="modal-overlay">
+  <div class="modal-content confirm-dialog">
+    <div class="warning-icon">!</div>
+    <p>{{ message }}</p>
+    
+    <div class="form-actions centered">
+      <button class="btn cancel-btn" (click)="cancel.emit()">No, Cancel</button>
+      <button class="btn confirm-btn" (click)="confirm.emit()">Yes, Delete</button>
+    </div>
+  </div>
+</div>

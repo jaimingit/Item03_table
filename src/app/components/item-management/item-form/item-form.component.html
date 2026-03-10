@@ -1,0 +1,137 @@
+<!-- ══════════════════════════════════════════
+     ITEM FORM ROW  (formType === 'item')
+     ══════════════════════════════════════════ -->
+<tr *ngIf="formType === 'item'"
+    class="inline-form-row"
+    [class.edit-mode]="mode === 'edit'"
+    [class.insert-mode]="mode === 'insert'">
+
+  <!-- Mode icon -->
+  <td>
+    <span class="form-mode-icon">
+      <svg *ngIf="mode === 'insert'" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <svg *ngIf="mode === 'edit'" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+    </span>
+  </td>
+
+  <!-- Item Code input with live badge preview -->
+  <td>
+    <div class="inline-field">
+      <span class="inline-badge-preview" *ngIf="itemForm.badge">{{ itemForm.badge }}</span>
+      <input
+        type="text"
+        class="inline-input"
+        placeholder="Item Code (e.g. SF5101)"
+        [(ngModel)]="itemForm.code"
+        (ngModelChange)="onItemCodeChange()"
+        maxlength="20"
+      />
+    </div>
+  </td>
+
+  <td><span class="form-placeholder">—</span></td>
+  <td><span class="form-placeholder">—</span></td>
+  <td><span class="form-placeholder">—</span></td>
+  <td><span class="form-placeholder">—</span></td>
+
+  <!-- Save / Cancel -->
+  <td>
+    <div class="action-buttons">
+      <button class="btn btn-primary btn-sm"
+        (click)="onSave()"
+        [disabled]="!isItemFormValid">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        {{ mode === 'edit' ? 'Update' : 'Save' }}
+      </button>
+      <button class="btn btn-ghost btn-sm" (click)="onCancel()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </td>
+</tr>
+
+
+<!-- ══════════════════════════════════════════
+     PROCESS FORM ROW  (formType === 'process')
+     ══════════════════════════════════════════ -->
+<tr *ngIf="formType === 'process'"
+    class="inline-form-row process-form-row"
+    [class.edit-mode]="mode === 'edit'"
+    [class.insert-mode]="mode === 'insert'">
+
+  <!-- Seq (read-only, auto) -->
+  <td>
+    <span class="process-seq form-seq-badge">{{ processForm.seq }}</span>
+  </td>
+
+  <!-- Process Code -->
+  <td>
+    <input
+      type="text"
+      class="inline-input"
+      placeholder="Process Code"
+      [(ngModel)]="processForm.code"
+      maxlength="10"
+    />
+  </td>
+
+  <!-- Process Type (1 or 2 toggle) -->
+  <td>
+    <div class="type-toggle">
+      <button class="type-btn" [class.active]="processForm.type === 1" (click)="processForm.type = 1">1</button>
+      <button class="type-btn" [class.active]="processForm.type === 2" (click)="processForm.type = 2">2</button>
+    </div>
+  </td>
+
+  <!-- Supplier Code (only visible when type = 2) -->
+  <td>
+    <input
+      *ngIf="showSupplier"
+      type="text"
+      class="inline-input"
+      placeholder="Supplier Code"
+      [(ngModel)]="processForm.supplierCode"
+      maxlength="20"
+    />
+    <span *ngIf="!showSupplier" class="form-placeholder">— (Type 1)</span>
+  </td>
+
+  <!-- Save / Cancel -->
+  <td>
+    <div class="action-buttons">
+      <button class="btn btn-primary btn-sm"
+        (click)="onSave()"
+        [disabled]="!isProcessFormValid">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        {{ mode === 'edit' ? 'Update' : 'Save' }}
+      </button>
+      <button class="btn btn-ghost btn-sm" (click)="onCancel()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </td>
+</tr>

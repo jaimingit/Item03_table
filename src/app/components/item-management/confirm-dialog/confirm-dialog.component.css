@@ -1,0 +1,85 @@
+/* Re-using the overlay style for consistency */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000; /* Higher z-index than the form modal */
+}
+
+/* Dialog Box */
+.confirm-dialog {
+  background: #ffffff;
+  padding: 40px 30px;
+  border-radius: 20px;
+  width: 400px;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Warning Icon Circle */
+.warning-icon {
+  width: 60px;
+  height: 60px;
+  background-color: #fef2f2;
+  color: #dc2626;
+  font-size: 30px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  border: 2px solid #fee2e2;
+}
+
+.confirm-dialog p {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+/* Button Layout for Confirm */
+.centered {
+  justify-content: center !important;
+  gap: 15px;
+}
+
+.confirm-btn {
+  background: #dc2626 !important;
+  color: white !important;
+  min-width: 120px;
+  margin-left: 10px;
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+
+.confirm-btn:hover {
+  background: #b91c1c !important;
+  transform: translateY(-2px);
+}
+
+.cancel-btn {
+  background: #f1f5f9;
+  color: #475569;
+  min-width: 120px;
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+
+.cancel-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}

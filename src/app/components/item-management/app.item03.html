@@ -1,0 +1,535 @@
+<header class="header">
+  <div class="header-content">
+    <h1 class="header-title">Item Process Management</h1>
+    <div class="header-actions">
+      <div class="search-container">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" placeholder="Search items or processes..." [(ngModel)]="searchTerm"
+          ... />
+      </div>
+
+      <button class="btn btn-primary" (click)="openInsertForm()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add New Item
+      </button>
+      <button class="btn btn-danger" (click)="deleteAllItems()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+        </svg>
+        Delete All Items
+      </button>
+    </div>
+  </div>
+  <!-- Loading Spinner -->
+<div *ngIf="isLoading" style="text-align:center; padding: 40px;">
+  Loading items...
+</div>
+
+<!-- Error Message -->
+<div *ngIf="errorMessage" style="color:red; padding: 16px;">
+  {{ errorMessage }}
+  <button (click)="loadItems()">Retry</button>
+</div>
+</header>
+
+<main class="main-container">
+
+  <div class="table-container">
+    <div class="table-header">
+
+      <h2 class="table-title">Items &amp; Processes</h2>
+      <div class="table-actions">
+        <div class="bulk-toolbar" *ngIf="getSelectedCount() > 1">
+          <span class="selected-count"><strong>{{ getSelectedCount() }}</strong> items selected</span>
+
+          <button class="btn btn-primary btn-sm BTN-ALL" (click)="openBulkUpdate()">
+            Update All Processes
+          </button>
+
+
+          <button class="btn btn-ghost btn-sm" (click)="clearSelection()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 40px;">
+            <input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllSelection($event)">
+          </th>
+          <th style="width: 40px;"></th>
+          <th>Item Code</th>
+          <th>Process Seq</th>
+          <th>Process Code</th>
+          <th>Process Type</th>
+          <th>Supplier Code</th>
+          <th style="width: 140px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr *ngIf="showInsertForm" class="inline-form-row insert-mode">
+          <td></td>
+          <td>
+            <span class="form-mode-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </span>
+          </td>
+          <td>
+            <div class="inline-field">
+              <span class="inline-badge-preview" *ngIf="insertItemForm.badge">
+                {{ insertItemForm.badge }}
+              </span>
+              <input type="text" class="inline-input" placeholder="Item Code (e.g. SF5101)"
+                [(ngModel)]="insertItemForm.code" (ngModelChange)="onInsertItemCodeChange()" maxlength="20" />
+            </div>
+          </td>
+          <td><span class="form-placeholder">
+            —
+          </span></td>
+          <td><span class="form-placeholder">—</span></td>
+          <td><span class="form-placeholder">—</span></td>
+          <td><span class="form-placeholder">—</span></td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-sm" [disabled]="!insertItemForm.code.trim()" (click)="onInsertSave()">
+                Save
+              </button>
+              <button class="btn btn-ghost btn-sm" (click)="onInsertCancel()">
+                Cancel
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <ng-container *ngFor="let item of filteredItems">
+
+          <tr class="item-row" [attr.data-item]="item.code" [class.row-editing]="isEditing(item)"
+            [class.row-selected]="item.selected">
+
+            <td>
+              <input type="checkbox" [(ngModel)]="item.selected">
+            </td>
+
+            <td>
+              <button class="expand-btn" [class.expanded]="item.expanded" (click)="toggleProcess(item)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </td>
+            <td>
+              <div class="item-code">
+                <span class="item-badge">{{ item.badge }}</span>
+                {{ item.code }}
+              </div>
+            </td>
+            <td><span class="process-count">{{ item.processes.length }}</span></td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn btn-sm" [class.btn-primary]="isEditing(item)" [class.btn-ghost]="!isEditing(item)"
+                  [title]="isEditing(item) ? 'Close Edit' : 'Edit Item'" (click)="openEditForm(item)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button class="btn btn-danger btn-sm" title="Delete Item" (click)="deleteItem(item)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <tr *ngIf="isEditing(item)" class="inline-form-row edit-mode">
+            <td></td>
+            <td>
+              <span class="form-mode-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </span>
+            </td>
+            <td>
+              <div class="inline-field">
+                <span class="inline-badge-preview" *ngIf="editItemForm.badge">
+                  {{ editItemForm.badge }}
+                </span>
+                <input type="text" class="inline-input" placeholder="Item Code" [(ngModel)]="editItemForm.code"
+                  (ngModelChange)="onEditItemCodeChange()" maxlength="20" />
+              </div>
+            </td>
+            <td><span class="form-placeholder">—</span></td>
+            <td><span class="form-placeholder">—</span></td>
+            <td><span class="form-placeholder">—</span></td>
+            <td><span class="form-placeholder">—</span></td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn btn-primary btn-sm" [disabled]="!editItemForm.code.trim()"
+                  (click)="onEditSave(item)">
+                  Update
+                </button>
+                <button class="btn btn-ghost btn-sm" (click)="onEditCancel()">
+                  Cancel
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <tr class="process-detail-row" [class.expanded]="item.expanded">
+            <td colspan="8" style="padding: 0;">
+              <div class="process-detail-content">
+                <table class="mini-table">
+                  <colgroup>
+                    <col style="width: 40px;" />
+                    <col style="width: 40px;" />
+                    <col />
+                    <col />
+                    <col />
+                    <col />
+                    <col />
+                    <col style="width: 140px;" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th></th>
+                      <th></th>
+                      <th>Process Seq</th>
+                      <th>Process Code</th>
+                      <th>Process Type</th>
+                      <th>Supplier Code</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <ng-container *ngFor="let process of item.processes; let i = index">
+  <tr [class.process-row-inserting]="insertAfterSeq === process.seq && insertingProcessItem === item">
+    <td></td>
+    <td></td>
+    <td></td>
+    <td><span class="process-seq">{{ process.seq }}</span></td>
+    <td><span class="process-code">{{ process.code }}</span></td>
+    <td><span class="process-type">{{ process.type }}</span></td>
+    <td>
+      <span class="process-supplier" [class.none]="!process.supplierCode">
+        {{ process.supplierCode || '-' }}
+      </span>
+    </td>
+    <td>
+      <div class="action-buttons">
+        <button type="button" class="btn btn-secondary btn-sm"
+          (click)="openInsertProcessBetween(item, process)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+        <button class="btn btn-sm" [class.btn-primary]="editingProcessSeq === process.seq && editingProcessItem === item"
+          (click)="openEditProcess(item, process)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="btn btn-danger btn-sm" (click)="deleteProcess(item, process)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </td>
+  </tr>
+
+  <!-- ── INSERT FORM ROW ── -->
+  <tr *ngIf="insertingProcessItem === item && insertAfterSeq === process.seq"
+    class="inline-form-row insert-mode">
+    <td></td>
+    <td></td>
+    <td></td>
+
+    <td>
+      <span class="form-seq-badge process-seq">{{ process.seq + 1 }}</span>
+    </td>
+
+    <td>
+      <input type="text" class="inline-input" placeholder="Process Code"
+        [(ngModel)]="insertProcessForm.code">
+    </td>
+
+    <td>
+      <div class="type-toggle">
+        <button class="type-btn" [class.active]="insertProcessForm.type === 1"
+          (click)="insertProcessForm.type = 1">
+          1
+        </button>
+        <button class="type-btn" [class.active]="insertProcessForm.type === 2"
+          (click)="insertProcessForm.type = 2">
+          2
+        </button>
+      </div>
+    </td>
+
+    <td>
+      <input *ngIf="insertProcessForm.type === 2" type="text" class="inline-input"
+        placeholder="Supplier" [(ngModel)]="insertProcessForm.supplierCode">
+      <span *ngIf="insertProcessForm.type === 1" class="form-placeholder">—</span>
+    </td>
+
+    <td>
+      <div class="action-buttons">
+        <button class="btn btn-primary btn-sm"
+          [disabled]="!insertProcessForm.code.trim()"
+          (click)="onInsertProcessSave(item)">
+          Save
+        </button>
+        <button class="btn btn-ghost btn-sm" (click)="onInsertProcessCancel()">
+          Cancel
+        </button>
+      </div>
+    </td>
+  </tr>
+
+  <!-- ── EDIT FORM ROW ── -->
+  <tr *ngIf="editingProcessItem === item && editingProcessSeq === process.seq"
+    class="inline-form-row edit-mode">
+    <td></td>
+    <td></td>
+    <td></td>
+
+    <td>
+      <span class="form-seq-badge process-seq">{{ process.seq }}</span>
+    </td>
+
+    <td>
+      <input type="text" class="inline-input" [(ngModel)]="editProcessForm.code">
+    </td>
+
+    <td>
+      <div class="type-toggle">
+        <button class="type-btn" [class.active]="editProcessForm.type === 1"
+          (click)="editProcessForm.type = 1">
+          1
+        </button>
+        <button class="type-btn" [class.active]="editProcessForm.type === 2"
+          (click)="editProcessForm.type = 2">
+          2
+        </button>
+      </div>
+    </td>
+
+    <td>
+      <input *ngIf="editProcessForm.type === 2" type="text" class="inline-input"
+        placeholder="Supplier" [(ngModel)]="editProcessForm.supplierCode">
+      <span *ngIf="editProcessForm.type === 1" class="form-placeholder">—</span>
+    </td>
+
+    <td>
+      <div class="action-buttons">
+        <button class="btn btn-primary btn-sm" (click)="onEditProcessSave(item, process)">
+          Save
+        </button>
+        <button class="btn btn-ghost btn-sm" (click)="editingProcessSeq = null">
+          Cancel
+        </button>
+      </div>
+    </td>
+  </tr>
+
+</ng-container>
+                  </tbody>
+                </table>
+
+                <!-- ── Add Process Button (shows when no processes OR as footer add) ── -->
+                <div style="padding: 10px 0;">
+                  <button *ngIf="insertingProcessItem !== item || insertAfterSeq !== null"
+                    class="btn btn-secondary btn-sm"
+                    style="margin-top: 8px;"
+                    (click)="openInsertProcessAtEnd(item)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Process
+                  </button>
+
+                  <!-- ── Inline Add Process Form (appears at bottom) ── -->
+                  <table *ngIf="insertingProcessItem === item && insertAfterSeq === null"
+                    class="mini-table" style="margin-top: 8px;">
+                    <tbody>
+                      <tr class="inline-form-row insert-mode">
+                        <td></td>
+                        <td></td>
+                        <td></td>
+
+                        <td>
+                          <span class="form-seq-badge process-seq">
+                            {{ item.processes.length + 1 }}
+                          </span>
+                        </td>
+
+                        <td>
+                          <input type="text" class="inline-input"
+                            placeholder="Process Code"
+                            [(ngModel)]="insertProcessForm.code">
+                        </td>
+
+                        <td>
+                          <div class="type-toggle">
+                            <button class="type-btn"
+                              [class.active]="insertProcessForm.type === 1"
+                              (click)="insertProcessForm.type = 1">1</button>
+                            <button class="type-btn"
+                              [class.active]="insertProcessForm.type === 2"
+                              (click)="insertProcessForm.type = 2">2</button>
+                          </div>
+                        </td>
+
+                        <td>
+                          <input *ngIf="insertProcessForm.type === 2"
+                            type="text" class="inline-input"
+                            placeholder="Supplier"
+                            [(ngModel)]="insertProcessForm.supplierCode">
+                          <span *ngIf="insertProcessForm.type === 1"
+                            class="form-placeholder">—</span>
+                        </td>
+
+                        <td>
+                          <div class="action-buttons">
+                            <button class="btn btn-primary btn-sm"
+                              [disabled]="!insertProcessForm.code.trim()"
+                              (click)="onInsertProcessSave(item)">
+                              Save
+                            </button>
+                            <button class="btn btn-ghost btn-sm"
+                              (click)="onInsertProcessCancel()">
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showBulkUpdateModal">
+    <div class="modal-container" style="width: 90%; max-width: 1000px;">
+      <div class="modal-header">
+        <h3 style="margin:0">Multi-Item Bulk Editor</h3>
+        <p>Editing {{ bulkEditItems.length }} selected items</p>
+      </div>
+
+      <div class="modal-body" style="margin-top: 20px;">
+        <div *ngFor="let item of bulkEditItems; let itemIdx = index"
+          style="margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+
+          <div
+            style="background: #f8fafc; padding: 10px 15px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px;">
+            <span class="item-badge">{{ item.badge }}</span>
+            <input type="text" [(ngModel)]="item.code" class="inline-input" style="font-weight: bold; width: 200px;">
+            <span style="color: #64748b; font-size: 12px;">(Item {{itemIdx + 1}})</span>
+          </div>
+
+          <table class="mini-table" style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #ffffff;">
+              <tr>
+                <th style="width: 30px;">Seq</th>
+                <th>Process Code</th>
+                <th style="width: 130px;">Type</th>
+                <th>Supplier</th>
+                <th style="width: 100px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of item.processes; let procIdx = index" style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px; text-align: center;">
+                  <span class="process-seq" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">
+                    {{p.seq}}
+                  </span>
+                </td>
+                <td style="padding: 5px;">
+                  <input type="text" [(ngModel)]="p.code" class="inline-input" placeholder="e.g. DRILL">
+                </td>
+                <td style="padding: 5px;">
+                  <select [(ngModel)]="p.type" class="inline-input">
+                    <option [ngValue]="1">Internal</option>
+                    <option [ngValue]="2">External</option>
+                  </select>
+                </td>
+                <td style="padding: 5px;">
+                  <input *ngIf="p.type === 2" type="text" [(ngModel)]="p.supplierCode" class="inline-input"
+                    placeholder="Supplier">
+                  <span *ngIf="p.type === 1" class="form-placeholder" style="display:block; text-align:center;">—</span>
+                </td>
+                <td style="padding: 5px;">
+                  <div style="display: flex; gap: 5px; justify-content: center;">
+                    <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 16px;"
+                      title="Insert process below" (click)="insertProcessInBulkItem(item, procIdx)">
+                      +
+                    </button>
+
+                    <button class="btn btn-danger btn-sm" style="padding: 2px 8px;"
+                      (click)="removeProcessFromBulkItem(item, procIdx)">
+                      &times;
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="padding: 10px; background: #ffffff;">
+            <button class="btn btn-secondary btn-sm" (click)="addProcessToBulkItem(item)">+ Add Step to
+              {{item.code}}</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="showBulkUpdateModal = false">Cancel</button>
+        <button class="btn btn-primary" (click)="applyBulkProcessUpdate()">Save All Changes</button>
+      </div>
+    </div>
+  </div>
+</main>
