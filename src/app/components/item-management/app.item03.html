@@ -1,535 +1,868 @@
-<header class="header">
-  <div class="header-content">
-    <h1 class="header-title">Item Process Management</h1>
-    <div class="header-actions">
-      <div class="search-container">
-        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" class="search-input" placeholder="Search items or processes..." [(ngModel)]="searchTerm"
-          ... />
-      </div>
+<!-- ══════════════════════════════════════════════════════════════
+     Bootstrap 5.3 · Bootstrap Icons 1.11 · IBM Plex Fonts
+     Bulk-add modal fully integrated
+     ══════════════════════════════════════════════════════════════ -->
 
-      <button class="btn btn-primary" (click)="openInsertForm()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Add New Item
-      </button>
-      <button class="btn btn-danger" (click)="deleteAllItems()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18"></path>
-          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-        </svg>
-        Delete All Items
-      </button>
-    </div>
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous">
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet">
+
+<style>
+  /* ─── Design tokens ─────────────────────────────────────────── */
+  :root {
+    --navy:      #0f172a;
+    --navy-med:  #1e293b;
+    --navy-lt:   #334155;
+    --border:    #e2e8f0;
+    --border-md: #cbd5e1;
+    --bg:        #f8fafc;
+    --white:     #ffffff;
+    --accent:    #2563eb;
+    --accent-dk: #1d4ed8;
+    --accent-lt: #eff6ff;
+    --success:   #059669;
+    --suc-lt:    #ecfdf5;
+    --danger:    #dc2626;
+    --dan-lt:    #fef2f2;
+    --warn:      #d97706;
+    --warn-lt:   #fffbeb;
+    --text:      #0f172a;
+    --muted:     #64748b;
+    --faint:     #94a3b8;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+    --hdr-h:     56px;
+    --stat-h:    58px;
+  }
+
+  html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--text); }
+
+  /* ─── Header ────────────────────────────────────────────────── */
+  .app-header {
+    position: sticky; top: 0; z-index: 200;
+    height: var(--hdr-h);
+    background: var(--navy);
+    border-bottom: 2px solid var(--navy-lt);
+  }
+  .brand-icon {
+    width: 32px; height: 32px; background: var(--accent);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .hdr-search { position: relative; }
+  .hdr-search .bi-search {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: rgba(255,255,255,.4); font-size: 13px; pointer-events: none;
+  }
+  .hdr-search input {
+    height: 34px; width: 280px;
+    background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 8px; color: #fff; padding: 0 12px 0 32px;
+    font-size: 13px; font-family: var(--sans); transition: background .18s, border-color .18s;
+  }
+  .hdr-search input::placeholder { color: rgba(255,255,255,.38); }
+  .hdr-search input:focus { outline: none; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.32); }
+
+  /* ─── Stat strip ────────────────────────────────────────────── */
+  .stat-strip { height: var(--stat-h); background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; }
+  .stat-strip::-webkit-scrollbar { height: 0; }
+  .stat-cell {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 24px 0 0; margin-right: 24px;
+    border-right: 1px solid var(--border); white-space: nowrap; flex-shrink: 0;
+  }
+  .stat-cell:last-child { border-right: none; margin-right: 0; }
+  .stat-ico { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .ico-blue  { background: var(--accent-lt); color: var(--accent);  }
+  .ico-slate { background: #f1f5f9;           color: var(--muted);   }
+  .ico-amber { background: var(--warn-lt);    color: var(--warn);    }
+  .ico-green { background: var(--suc-lt);     color: var(--success); }
+  .ico-red   { background: var(--dan-lt);     color: var(--danger);  }
+  .stat-lbl  { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; line-height: 1.2; }
+  .stat-val  { font-size: 20px; font-weight: 700; font-family: var(--mono); line-height: 1.1; color: var(--text); }
+
+  /* ─── Bulk selection bar ────────────────────────────────────── */
+  .bulk-bar { background: #1a3558; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13.5px; }
+  .bulk-cnt { background: var(--accent); border-radius: 6px; padding: 1px 9px; font-weight: 700; font-size: 12px; }
+
+  /* ─── Workspace ─────────────────────────────────────────────── */
+  .workspace { display: flex; height: calc(100vh - var(--hdr-h) - var(--stat-h)); min-height: 0; overflow: hidden; }
+
+  /* ─── Left panel ────────────────────────────────────────────── */
+  .panel-left { width: 275px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .pl-hdr { border-bottom: 1px solid var(--border); padding: 10px 14px; flex-shrink: 0; }
+  .pl-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .pl-badge { background: #e2e8f0; border-radius: 20px; padding: 1px 8px; font-size: 10px; font-weight: 700; color: var(--muted); }
+  .item-scroll { flex: 1; overflow-y: auto; padding: 6px 8px; }
+  .item-scroll::-webkit-scrollbar { width: 3px; }
+  .item-scroll::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+
+  /* ─── Item entry (fixed 4-col) ──────────────────────────────── */
+  .item-entry {
+    display: flex; flex-direction: row; align-items: center;
+    gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1.5px solid transparent;
+    cursor: pointer; margin-bottom: 2px; min-height: 52px;
+    transition: background .13s, border-color .13s; overflow: hidden;
+  }
+  .item-entry:hover   { background: var(--bg); }
+  .item-entry.active  { background: var(--accent-lt); border-color: #bfdbfe; }
+  .item-entry.ie-edit { background: var(--warn-lt);   border-color: #fde68a; }
+  .ie-chk { flex: 0 0 15px; width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+  .i-badge {
+    flex: 0 0 32px; width: 32px; height: 32px; border-radius: 7px;
+    background: var(--navy-med); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; font-family: var(--mono);
+  }
+  .item-entry.active  .i-badge { background: var(--accent); }
+  .item-entry.ie-edit .i-badge { background: var(--warn); }
+  .ie-info { flex: 1 1 0; min-width: 0; overflow: hidden; }
+  .ie-code { font-size: 13px; font-weight: 600; font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+  .item-entry.active  .ie-code { color: var(--accent-dk); }
+  .item-entry.ie-edit .ie-code { color: var(--warn); }
+  .ie-sub { font-size: 11px; color: var(--faint); white-space: nowrap; margin-top: 2px; }
+  .ie-actions { flex: 0 0 auto; display: flex; gap: 3px; opacity: 0; pointer-events: none; transition: opacity .13s; }
+  .item-entry:hover   .ie-actions,
+  .item-entry.active  .ie-actions,
+  .item-entry.ie-edit .ie-actions { opacity: 1; pointer-events: auto; }
+
+  /* ─── Inline forms (left panel) ─────────────────────────────── */
+  .ie-form { border-radius: 8px; border: 1.5px solid #bfdbfe; background: var(--accent-lt); padding: 10px 11px; margin-bottom: 4px; }
+  .ie-form.warn-form { background: var(--warn-lt); border-color: #fde68a; }
+  .pl-footer { padding: 9px 8px; border-top: 1px solid var(--border); flex-shrink: 0; }
+
+  /* ─── Right panel ───────────────────────────────────────────── */
+  .panel-right { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  .pr-hdr { background: var(--white); border-bottom: 1px solid var(--border); padding: 12px 20px; flex-shrink: 0; }
+  .pr-hdr h2 { font-size: 16px; font-weight: 700; font-family: var(--mono); margin: 0; }
+  .pr-sub { font-size: 11.5px; color: var(--muted); }
+  .proc-chip { background: var(--accent-lt); color: var(--accent); border: 1px solid #bfdbfe; border-radius: 20px; font-size: 11px; font-weight: 700; padding: 2px 10px; font-family: var(--mono); }
+  .pr-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .pr-body::-webkit-scrollbar { width: 3px; }
+  .pr-body::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+
+  /* ─── Process table ─────────────────────────────────────────── */
+  .proc-wrap { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .proc-tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; table-layout: fixed; }
+  .proc-tbl col.c-seq  { width: 56px; }
+  .proc-tbl col.c-code { width: auto; }
+  .proc-tbl col.c-type { width: 140px; }
+  .proc-tbl col.c-sup  { width: 140px; }
+  .proc-tbl col.c-act  { width: 118px; }
+  .proc-tbl thead tr { background: var(--navy); }
+  .proc-tbl thead th { padding: 11px 13px; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.78); border: none; white-space: nowrap; }
+  .proc-tbl tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  .proc-tbl tbody tr:last-child { border-bottom: none; }
+  .proc-tbl tbody tr:hover { background: #f8fafc; }
+  .proc-tbl td { padding: 10px 13px; vertical-align: middle; }
+  .seq-b { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border-md); font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); }
+  .seq-b.ins { background: var(--accent-lt); color: var(--accent); border-color: #bfdbfe; }
+  .seq-b.edt { background: var(--warn-lt);   color: var(--warn);   border-color: #fde68a; }
+  .code-chip { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--navy); }
+  .tp-badge  { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .tp-int    { background: var(--suc-lt);    color: var(--success); border: 1px solid #a7f3d0; }
+  .tp-ext    { background: var(--accent-lt); color: var(--accent);  border: 1px solid #bfdbfe; }
+  .sup-chip  { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .sup-chip.none { color: var(--faint); }
+  .row-ins { background: #f0f9ff !important; }
+  .row-edt { background: #fffbeb !important; }
+  .row-ins td, .row-edt td { padding: 7px 13px !important; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-ins { background: var(--accent); }
+  .dot-edt { background: var(--warn); }
+  .re-btn { width: 24px; height: 24px; border: 1px solid var(--border-md); border-radius: 5px; background: var(--white); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; transition: all .13s; }
+  .re-btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .re-btn:disabled { opacity: .25; cursor: not-allowed; }
+
+  /* ─── Inputs ────────────────────────────────────────────────── */
+  .ipt { height: 31px; border: 1px solid var(--border-md); border-radius: 6px; padding: 0 9px; font-size: 13px; font-family: var(--sans); color: var(--text); background: var(--white); width: 100%; transition: border-color .14s, box-shadow .14s; }
+  .ipt:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.11); }
+  .ipt-mono { font-family: var(--mono); font-weight: 600; }
+  .ipt-sel  { height: 31px; border: 1px solid var(--border-md); border-radius: 6px; padding: 0 8px; font-size: 13px; font-family: var(--sans); background: var(--white); color: var(--text); cursor: pointer; width: 100%; }
+  .ipt-sel:focus { outline: none; border-color: var(--accent); }
+  .tgl { display: flex; gap: 3px; }
+  .tgl-btn { height: 28px; padding: 0 11px; border: 1.5px solid var(--border-md); border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; background: var(--white); color: var(--muted); transition: all .13s; }
+  .tgl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tgl-int { background: var(--suc-lt);    border-color: var(--success); color: var(--success); }
+  .tgl-ext { background: var(--accent-lt); border-color: var(--accent);  color: var(--accent);  }
+
+  /* ─── Buttons ───────────────────────────────────────────────── */
+  .btn-a { display: inline-flex; align-items: center; gap: 5px; padding: 0 14px; height: 33px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: var(--sans); border: none; cursor: pointer; transition: all .13s; white-space: nowrap; flex-shrink: 0; }
+  .btn-a.primary { background: var(--accent);  color: #fff; }
+  .btn-a.primary:hover { background: var(--accent-dk); }
+  .btn-a.danger  { background: var(--danger);  color: #fff; }
+  .btn-a.danger:hover  { background: #b91c1c; }
+  .btn-a.success { background: var(--success); color: #fff; }
+  .btn-a.success:hover { background: #047857; }
+  .btn-a.ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border-md); }
+  .btn-a.ghost:hover   { background: var(--bg); color: var(--text); }
+  .btn-a.ghost-w { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.28); }
+  .btn-a.ghost-w:hover { background: rgba(255,255,255,.08); }
+  .btn-a.sm { height: 28px; padding: 0 10px; font-size: 12px; }
+  .btn-a.xs { height: 24px; padding: 0 8px;  font-size: 11.5px; }
+  .btn-a:disabled { opacity: .42; cursor: not-allowed; }
+  .btn-a.bulk-add-btn { background: linear-gradient(135deg,#7c3aed,#4f46e5); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.35); }
+  .btn-a.bulk-add-btn:hover { background: linear-gradient(135deg,#6d28d9,#4338ca); box-shadow: 0 4px 12px rgba(124,58,237,.45); }
+  .ico-btn { width: 27px; height: 27px; border-radius: 6px; border: 1px solid var(--border-md); background: var(--white); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; padding: 0; transition: all .13s; flex-shrink: 0; }
+  .ico-btn:hover     { background: var(--bg); color: var(--text); }
+  .ico-btn.e:hover   { background: var(--warn-lt);   border-color: #fde68a; color: var(--warn);    }
+  .ico-btn.d:hover   { background: var(--dan-lt);    border-color: #fca5a5; color: var(--danger);  }
+  .ico-btn.ins:hover { background: var(--accent-lt); border-color: #bfdbfe; color: var(--accent);  }
+  .ico-btn.sm { width: 24px; height: 24px; font-size: 12px; border-radius: 5px; }
+  .ico-btn.lg { width: 32px; height: 32px; font-size: 17px; border-radius: 7px; }
+
+  /* ─── Empty state + spinner ─────────────────────────────────── */
+  .empty-st { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-st .eico { font-size: 48px; color: var(--border-md); margin-bottom: 14px; }
+  .empty-st h3    { font-size: 15px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .empty-st p     { font-size: 13px; color: var(--faint); margin: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
+
+  /* ─── Modal (shared base) ───────────────────────────────────── */
+  .modal-back { position: fixed; inset: 0; background: rgba(15,23,42,.55); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-box  { background: var(--white); border-radius: 12px; box-shadow: 0 20px 48px rgba(0,0,0,.18); width: 100%; max-width: 900px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal-hd   { padding: 17px 22px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-hd h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .modal-hd p  { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+  .modal-bd   { flex: 1; overflow-y: auto; padding: 16px 22px; }
+  .modal-bd::-webkit-scrollbar { width: 3px; }
+  .modal-bd::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+  .modal-ft   { padding: 14px 22px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .bulk-card    { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .bulk-card-hd { background: var(--bg); padding: 10px 14px; border-bottom: 1px solid var(--border); }
+
+  /* ─── Bulk-add modal ─────────────────────────────────────────── */
+  .ba-modal-box {
+    background: var(--white); border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.22);
+    width: 100%; max-width: 860px; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden; position: relative;
+  }
+  .ba-hdr { background: linear-gradient(135deg,var(--navy) 0%,#1e3a5f 100%); padding: 18px 24px 16px; flex-shrink: 0; }
+  .ba-hdr h3 { margin: 0; font-size: 17px; font-weight: 700; color: #fff; }
+  .ba-hdr p  { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,.55); }
+  .ba-body { flex: 1; overflow-y: auto; padding: 20px 24px; background: var(--bg); }
+  .ba-body::-webkit-scrollbar { width: 3px; }
+  .ba-body::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+  .ba-ft { background: var(--white); padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .ba-saving { position: absolute; inset: 0; background: rgba(255,255,255,.65); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 14px; }
+  .ba-error { background: var(--dan-lt); border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--danger); display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+
+  /* draft card */
+  .draft-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; transition: border-color .15s, box-shadow .15s; }
+  .draft-card:focus-within { border-color: #bfdbfe; box-shadow: 0 0 0 3px rgba(37,99,235,.07); }
+  .draft-card-hdr { background: var(--navy); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .draft-num { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.15); color: rgba(255,255,255,.9); font-size: 11px; font-weight: 700; font-family: var(--mono); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .draft-badge { width: 30px; height: 30px; border-radius: 7px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; font-family: var(--mono); flex-shrink: 0; }
+  .draft-badge.empty { background: rgba(255,255,255,.15); }
+  .draft-code-ipt { flex: 1; height: 32px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 6px; color: #fff; padding: 0 10px; font-size: 13.5px; font-weight: 600; font-family: var(--mono); transition: background .15s, border-color .15s; }
+  .draft-code-ipt::placeholder { color: rgba(255,255,255,.38); }
+  .draft-code-ipt:focus { outline: none; background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.45); }
+
+  /* process rows inside draft card */
+  .draft-proc-body { padding: 10px 14px 12px; }
+  .proc-row { display: grid; grid-template-columns: 24px 1fr 110px 1fr 26px; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--border); }
+  .proc-row:last-child { border-bottom: none; }
+  .proc-seq-lbl { width: 24px; height: 24px; border-radius: 5px; background: var(--bg); border: 1px solid var(--border-md); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--mono); color: var(--muted); }
+  .proc-col-lbl { display: grid; grid-template-columns: 24px 1fr 110px 1fr 26px; gap: 8px; padding: 4px 0 7px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .proc-add-row { padding: 8px 0 2px; display: flex; align-items: center; gap: 8px; }
+  .proc-add-line { flex: 1; height: 1px; background: var(--border); }
+  .add-item-row { border: 2px dashed var(--border-md); border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+  .add-item-row:hover { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
+
+  /* ─── Responsive ────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .panel-left { width: 230px; }
+    .hide-md { display: none !important; }
+  }
+  @media (max-width: 768px) {
+    .workspace { flex-direction: column; height: auto; overflow: visible; }
+    .panel-left { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .item-scroll { max-height: 240px; }
+    .panel-right { min-height: 400px; }
+    .hdr-search input { width: 180px; }
+    .pr-body { padding: 12px; }
+  }
+  @media (max-width: 540px) {
+    .app-header { padding: 0 12px !important; }
+    .hdr-search { display: none; }
+    .brand-label { display: none; }
+    .btn-a span  { display: none; }
+  }
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════
+     HEADER
+     ══════════════════════════════════════════════════════════════ -->
+<header class="app-header d-flex align-items-center px-4 gap-3">
+
+  <div class="d-flex align-items-center gap-2 flex-shrink-0">
+    <div class="brand-icon text-white"><i class="bi bi-gear-wide-connected"></i></div>
+    <span class="brand-label fw-bold text-white" style="font-size:14.5px;letter-spacing:.02em;">
+      Item Process Management
+    </span>
   </div>
-  <!-- Loading Spinner -->
-<div *ngIf="isLoading" style="text-align:center; padding: 40px;">
-  Loading items...
-</div>
 
-<!-- Error Message -->
-<div *ngIf="errorMessage" style="color:red; padding: 16px;">
-  {{ errorMessage }}
-  <button (click)="loadItems()">Retry</button>
-</div>
+  <div class="hdr-search flex-grow-1" style="max-width:300px;margin:0 auto;">
+    <i class="bi bi-search"></i>
+    <input type="text" placeholder="Search items or processes…" [(ngModel)]="searchTerm" />
+  </div>
+
+  <div class="d-flex gap-2 flex-shrink-0">
+    <button class="btn-a bulk-add-btn" (click)="openBulkAddModal()">
+      <i class="bi bi-collection-fill"></i><span>Add Item</span>
+    </button>
+    <button class="btn-a danger" (click)="deleteAllItems()">
+      <i class="bi bi-trash3"></i><span>Delete All</span>
+    </button>
+  </div>
 </header>
 
-<main class="main-container">
+<!-- ══════════════════════════════════════════════════════════════
+     STAT STRIP
+     ══════════════════════════════════════════════════════════════ -->
+<div class="stat-strip d-flex align-items-center px-4" style="height:var(--stat-h);">
+  <div class="stat-cell">
+    <div class="stat-ico ico-blue"><i class="bi bi-layers"></i></div>
+    <div><div class="stat-lbl">Total Items</div><div class="stat-val">{{ items.length }}</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-ico ico-slate"><i class="bi bi-diagram-3"></i></div>
+    <div><div class="stat-lbl">Processes</div><div class="stat-val">{{ processCount }}</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-ico ico-amber"><i class="bi bi-building"></i></div>
+    <div><div class="stat-lbl">Suppliers</div><div class="stat-val">{{ supplierCount }}</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-ico ico-green"><i class="bi bi-house-gear"></i></div>
+    <div><div class="stat-lbl">Internal</div><div class="stat-val">{{ internalProcessCount }}</div></div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-ico ico-red"><i class="bi bi-arrow-left-right"></i></div>
+    <div><div class="stat-lbl">External</div><div class="stat-val">{{ externalProcessCount }}</div></div>
+  </div>
+</div>
 
-  <div class="table-container">
-    <div class="table-header">
+<!-- Bulk selection toolbar -->
+<div class="bulk-bar d-flex align-items-center gap-2 px-4 py-2" *ngIf="getSelectedCount() > 1">
+  <i class="bi bi-check2-square"></i>
+  <span class="bulk-cnt">{{ getSelectedCount() }}</span>
+  <span>items selected</span>
+  <button class="btn-a primary sm ms-1" (click)="openBulkUpdate()">
+    <i class="bi bi-pencil-square"></i> Update All Processes
+  </button>
+  <button class="btn-a ghost-w sm" (click)="clearSelection()">
+    <i class="bi bi-x-lg"></i> Cancel
+  </button>
+</div>
 
-      <h2 class="table-title">Items &amp; Processes</h2>
-      <div class="table-actions">
-        <div class="bulk-toolbar" *ngIf="getSelectedCount() > 1">
-          <span class="selected-count"><strong>{{ getSelectedCount() }}</strong> items selected</span>
+<!-- ══════════════════════════════════════════════════════════════
+     WORKSPACE
+     ══════════════════════════════════════════════════════════════ -->
+<div class="workspace">
 
-          <button class="btn btn-primary btn-sm BTN-ALL" (click)="openBulkUpdate()">
-            Update All Processes
+  <!-- ── LEFT PANEL ─────────────────────────────────────────── -->
+  <aside class="panel-left">
+
+    <div class="pl-hdr d-flex align-items-center justify-content-between">
+      <span class="pl-title">Items <span class="pl-badge ms-1">{{ items.length }}</span></span>
+      <input type="checkbox"
+             class="form-check-input mt-0"
+             style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"
+             [checked]="isAllSelected()"
+             (change)="toggleAllSelection($event)"
+             title="Select all">
+    </div>
+
+    <div class="item-scroll">
+
+      <!-- New item form -->
+      <div class="ie-form" *ngIf="showInsertForm">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div class="i-badge" *ngIf="insertItemForm.badge">{{ insertItemForm.badge }}</div>
+          <input class="ipt ipt-mono flex-grow-1"
+                 placeholder="Item Code (e.g. SF5101)"
+                 [(ngModel)]="insertItemForm.code"
+                 (ngModelChange)="onInsertItemCodeChange()"
+                 maxlength="20" />
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn-a primary sm flex-grow-1 justify-content-center"
+                  [disabled]="!insertItemForm.code.trim()" (click)="onInsertSave()">
+            <i class="bi bi-check2"></i> Save
           </button>
-
-
-          <button class="btn btn-ghost btn-sm" (click)="clearSelection()">Cancel</button>
+          <button class="btn-a ghost sm flex-grow-1 justify-content-center"
+                  (click)="onInsertCancel()">Cancel</button>
         </div>
       </div>
+
+      <!-- Item rows -->
+      <ng-container *ngFor="let item of filteredItems">
+
+        <div class="item-entry"
+             [class.active]="item.expanded"
+             [class.ie-edit]="isEditing(item)"
+             (click)="toggleProcess(item)">
+          <input type="checkbox" class="ie-chk form-check-input"
+                 [(ngModel)]="item.selected" (click)="$event.stopPropagation()">
+          <div class="i-badge">{{ item.badge }}</div>
+          <div class="ie-info">
+            <div class="ie-code">{{ item.code }}</div>
+            <div class="ie-sub">{{ item.processes.length }} process{{ item.processes.length !== 1 ? 'es' : '' }}</div>
+          </div>
+          <div class="ie-actions" (click)="$event.stopPropagation()">
+            <button class="ico-btn e sm" title="Edit item" (click)="openEditForm(item)">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="ico-btn d sm" title="Delete item" (click)="deleteItem(item)">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit item form -->
+        <div class="ie-form warn-form" *ngIf="isEditing(item)">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="i-badge" style="background:var(--warn);" *ngIf="editItemForm.badge">{{ editItemForm.badge }}</div>
+            <input class="ipt ipt-mono flex-grow-1"
+                   placeholder="Item Code"
+                   [(ngModel)]="editItemForm.code"
+                   (ngModelChange)="onEditItemCodeChange()"
+                   maxlength="20" />
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn-a success sm flex-grow-1 justify-content-center"
+                    [disabled]="!editItemForm.code.trim()" (click)="onEditSave(item)">
+              <i class="bi bi-check2"></i> Update
+            </button>
+            <button class="btn-a ghost sm flex-grow-1 justify-content-center"
+                    (click)="onEditCancel()">Cancel</button>
+          </div>
+        </div>
+
+      </ng-container>
+
+      <!-- Loading -->
+      <div *ngIf="isLoading" class="empty-st py-4">
+        <div class="spin"></div>
+        <p class="text-muted small">Loading items…</p>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="errorMessage && !isLoading" class="empty-st py-4">
+        <div class="eico" style="color:var(--danger);"><i class="bi bi-exclamation-triangle"></i></div>
+        <p class="small" style="color:var(--danger);">{{ errorMessage }}</p>
+      </div>
+
+    </div><!-- /item-scroll -->
+
+    <div class="pl-footer">
+      <button class="btn-a ghost w-100 justify-content-center" (click)="openInsertForm()">
+        <i class="bi bi-plus-lg"></i> Add New Item
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── RIGHT PANEL ────────────────────────────────────────── -->
+  <section class="panel-right">
+
+    <!-- Nothing selected -->
+    <ng-container *ngIf="!filteredItems || !filteredItems.some(i => i.expanded)">
+      <div class="empty-st mt-5">
+        <div class="eico"><i class="bi bi-arrow-left-circle"></i></div>
+        <h3>Select an Item</h3>
+        <p>Click any item on the left panel to view and manage its processes.</p>
+      </div>
+    </ng-container>
+
+    <!-- Active item detail -->
+    <ng-container *ngFor="let item of filteredItems">
+      <ng-container *ngIf="item.expanded">
+
+        <div class="pr-hdr d-flex align-items-center justify-content-between gap-3">
+          <div class="d-flex align-items-center gap-3 min-width-0">
+            <div class="i-badge flex-shrink-0"
+                 style="width:38px;height:38px;font-size:15px;border-radius:9px;background:var(--accent);">
+              {{ item.badge }}
+            </div>
+            <div class="min-width-0">
+              <h2 class="mb-0">{{ item.code }}</h2>
+              <div class="pr-sub">Process List</div>
+            </div>
+            <span class="proc-chip flex-shrink-0">{{ item.processes.length }}</span>
+          </div>
+          <button class="btn-a primary sm flex-shrink-0" (click)="openInsertProcessAtEnd(item)">
+            <i class="bi bi-plus-lg"></i> Add Process
+          </button>
+        </div>
+
+        <div class="pr-body">
+
+          <div *ngIf="item.processes.length === 0 && insertingProcessItem !== item" class="empty-st">
+            <div class="eico"><i class="bi bi-diagram-3"></i></div>
+            <h3>No Processes Yet</h3>
+            <p>Click "Add Process" to add the first step.</p>
+          </div>
+
+          <div class="proc-wrap" *ngIf="item.processes.length > 0 || insertingProcessItem === item">
+            <table class="proc-tbl">
+              <colgroup>
+                <col class="c-seq" />
+                <col class="c-code" />
+                <col class="c-type" />
+                <col class="c-sup hide-md" />
+                <col class="c-act" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Seq</th>
+                  <th>Process Code</th>
+                  <th>Type</th>
+                  <th class="hide-md">Supplier</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let process of item.processes; let i = index">
+
+                  <!-- Data row -->
+                  <tr>
+                    <td><span class="seq-b">{{ process.seq }}</span></td>
+                    <td><span class="code-chip">{{ process.code }}</span></td>
+                    <td>
+                      <span class="tp-badge" [class.tp-int]="process.type === 1" [class.tp-ext]="process.type === 2">
+                        <i class="bi" [class.bi-house-gear]="process.type === 1" [class.bi-arrow-left-right]="process.type === 2"></i>
+                        {{ process.type === 1 ? 'Internal' : 'External' }}
+                      </span>
+                    </td>
+                    <td class="hide-md">
+                      <span class="sup-chip" [class.none]="!process.supplierCode">{{ process.supplierCode || '—' }}</span>
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1 justify-content-end align-items-center">
+                        <button class="ico-btn ins sm" title="Insert after" (click)="openInsertProcessBetween(item, process)">
+                          <i class="bi bi-plus"></i>
+                        </button>
+                        <button class="ico-btn e sm" title="Edit process"
+                                [class.active]="editingProcessSeq === process.seq && editingProcessItem === item"
+                                (click)="openEditProcess(item, process)">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="ico-btn d sm" title="Delete process" (click)="deleteProcess(item, process)">
+                          <i class="bi bi-trash3"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Insert between form -->
+                  <tr class="row-ins" *ngIf="insertingProcessItem === item && insertAfterSeq === process.seq">
+                    <td><span class="seq-b ins">{{ process.seq + 1 }}</span></td>
+                    <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code"></td>
+                    <td>
+                      <div class="tgl">
+                        <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1" (click)="insertProcessForm.type = 1">Int</button>
+                        <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2" (click)="insertProcessForm.type = 2">Ext</button>
+                      </div>
+                    </td>
+                    <td class="hide-md">
+                      <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier" [(ngModel)]="insertProcessForm.supplierCode">
+                      <span *ngIf="insertProcessForm.type === 1" class="text-muted">—</span>
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()" (click)="onInsertProcessSave(item)">Save</button>
+                        <button class="btn-a ghost xs" (click)="onInsertProcessCancel()">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Edit form -->
+                  <tr class="row-edt" *ngIf="editingProcessItem === item && editingProcessSeq === process.seq">
+                    <td><span class="seq-b edt">{{ process.seq }}</span></td>
+                    <td><input class="ipt ipt-mono" [(ngModel)]="editProcessForm.code"></td>
+                    <td>
+                      <div class="tgl">
+                        <button class="tgl-btn" [class.tgl-int]="editProcessForm.type === 1" (click)="editProcessForm.type = 1">Int</button>
+                        <button class="tgl-btn" [class.tgl-ext]="editProcessForm.type === 2" (click)="editProcessForm.type = 2">Ext</button>
+                      </div>
+                    </td>
+                    <td class="hide-md">
+                      <input *ngIf="editProcessForm.type === 2" class="ipt" placeholder="Supplier" [(ngModel)]="editProcessForm.supplierCode">
+                      <span *ngIf="editProcessForm.type === 1" class="text-muted">—</span>
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button class="btn-a success xs" (click)="onEditProcessSave(item, process)">Update</button>
+                        <button class="btn-a ghost xs" (click)="editingProcessSeq = null">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+
+                </ng-container>
+
+                <!-- Add at end form -->
+                <tr class="row-ins" *ngIf="insertingProcessItem === item && insertAfterSeq === null">
+                  <td><span class="seq-b ins">{{ item.processes.length + 1 }}</span></td>
+                  <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code"></td>
+                  <td>
+                    <div class="tgl">
+                      <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1" (click)="insertProcessForm.type = 1">Int</button>
+                      <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2" (click)="insertProcessForm.type = 2">Ext</button>
+                    </div>
+                  </td>
+                  <td class="hide-md">
+                    <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier" [(ngModel)]="insertProcessForm.supplierCode">
+                    <span *ngIf="insertProcessForm.type === 1" class="text-muted">—</span>
+                  </td>
+                  <td>
+                    <div class="d-flex gap-1 justify-content-end">
+                      <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()" (click)="onInsertProcessSave(item)">Save</button>
+                      <button class="btn-a ghost xs" (click)="onInsertProcessCancel()">Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div><!-- /proc-wrap -->
+
+        </div><!-- /pr-body -->
+      </ng-container>
+    </ng-container>
+
+  </section>
+</div><!-- /workspace -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     BULK UPDATE MODAL  (existing — process editing for selected items)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="modal-back" *ngIf="showBulkUpdateModal">
+  <div class="modal-box">
+
+    <div class="modal-hd d-flex justify-content-between align-items-start">
+      <div>
+        <h3>Multi-Item Bulk Editor</h3>
+        <p>Editing <strong>{{ bulkEditItems.length }}</strong> selected items — changes apply on Save</p>
+      </div>
+      <button class="ico-btn lg" (click)="showBulkUpdateModal = false">
+        <i class="bi bi-x-lg"></i>
+      </button>
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th style="width: 40px;">
-            <input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllSelection($event)">
-          </th>
-          <th style="width: 40px;"></th>
-          <th>Item Code</th>
-          <th>Process Seq</th>
-          <th>Process Code</th>
-          <th>Process Type</th>
-          <th>Supplier Code</th>
-          <th style="width: 140px;">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
+    <div class="modal-bd">
+      <div class="bulk-card" *ngFor="let item of bulkEditItems; let itemIdx = index">
 
-        <tr *ngIf="showInsertForm" class="inline-form-row insert-mode">
-          <td></td>
-          <td>
-            <span class="form-mode-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </span>
-          </td>
-          <td>
-            <div class="inline-field">
-              <span class="inline-badge-preview" *ngIf="insertItemForm.badge">
-                {{ insertItemForm.badge }}
-              </span>
-              <input type="text" class="inline-input" placeholder="Item Code (e.g. SF5101)"
-                [(ngModel)]="insertItemForm.code" (ngModelChange)="onInsertItemCodeChange()" maxlength="20" />
-            </div>
-          </td>
-          <td><span class="form-placeholder">
-            —
-          </span></td>
-          <td><span class="form-placeholder">—</span></td>
-          <td><span class="form-placeholder">—</span></td>
-          <td><span class="form-placeholder">—</span></td>
-          <td>
-            <div class="action-buttons">
-              <button class="btn btn-primary btn-sm" [disabled]="!insertItemForm.code.trim()" (click)="onInsertSave()">
-                Save
-              </button>
-              <button class="btn btn-ghost btn-sm" (click)="onInsertCancel()">
-                Cancel
-              </button>
-            </div>
-          </td>
-        </tr>
+        <div class="bulk-card-hd d-flex align-items-center gap-2">
+          <div class="i-badge" style="background:var(--accent);">{{ item.badge }}</div>
+          <input type="text" [(ngModel)]="item.code" class="ipt ipt-mono fw-bold" style="max-width:220px;">
+          <span class="text-muted small ms-1">Item {{ itemIdx + 1 }}</span>
+        </div>
 
-        <ng-container *ngFor="let item of filteredItems">
-
-          <tr class="item-row" [attr.data-item]="item.code" [class.row-editing]="isEditing(item)"
-            [class.row-selected]="item.selected">
-
-            <td>
-              <input type="checkbox" [(ngModel)]="item.selected">
-            </td>
-
-            <td>
-              <button class="expand-btn" [class.expanded]="item.expanded" (click)="toggleProcess(item)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
-            </td>
-            <td>
-              <div class="item-code">
-                <span class="item-badge">{{ item.badge }}</span>
-                {{ item.code }}
-              </div>
-            </td>
-            <td><span class="process-count">{{ item.processes.length }}</span></td>
-            <td>-</td>
-            <td>-</td>
-            <td>-</td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-sm" [class.btn-primary]="isEditing(item)" [class.btn-ghost]="!isEditing(item)"
-                  [title]="isEditing(item) ? 'Close Edit' : 'Edit Item'" (click)="openEditForm(item)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                </button>
-                <button class="btn btn-danger btn-sm" title="Delete Item" (click)="deleteItem(item)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-
-          <tr *ngIf="isEditing(item)" class="inline-form-row edit-mode">
-            <td></td>
-            <td>
-              <span class="form-mode-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </span>
-            </td>
-            <td>
-              <div class="inline-field">
-                <span class="inline-badge-preview" *ngIf="editItemForm.badge">
-                  {{ editItemForm.badge }}
-                </span>
-                <input type="text" class="inline-input" placeholder="Item Code" [(ngModel)]="editItemForm.code"
-                  (ngModelChange)="onEditItemCodeChange()" maxlength="20" />
-              </div>
-            </td>
-            <td><span class="form-placeholder">—</span></td>
-            <td><span class="form-placeholder">—</span></td>
-            <td><span class="form-placeholder">—</span></td>
-            <td><span class="form-placeholder">—</span></td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-primary btn-sm" [disabled]="!editItemForm.code.trim()"
-                  (click)="onEditSave(item)">
-                  Update
-                </button>
-                <button class="btn btn-ghost btn-sm" (click)="onEditCancel()">
-                  Cancel
-                </button>
-              </div>
-            </td>
-          </tr>
-
-          <tr class="process-detail-row" [class.expanded]="item.expanded">
-            <td colspan="8" style="padding: 0;">
-              <div class="process-detail-content">
-                <table class="mini-table">
-                  <colgroup>
-                    <col style="width: 40px;" />
-                    <col style="width: 40px;" />
-                    <col />
-                    <col />
-                    <col />
-                    <col />
-                    <col />
-                    <col style="width: 140px;" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th></th>
-                      <th></th>
-                      <th>Process Seq</th>
-                      <th>Process Code</th>
-                      <th>Process Type</th>
-                      <th>Supplier Code</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <ng-container *ngFor="let process of item.processes; let i = index">
-  <tr [class.process-row-inserting]="insertAfterSeq === process.seq && insertingProcessItem === item">
-    <td></td>
-    <td></td>
-    <td></td>
-    <td><span class="process-seq">{{ process.seq }}</span></td>
-    <td><span class="process-code">{{ process.code }}</span></td>
-    <td><span class="process-type">{{ process.type }}</span></td>
-    <td>
-      <span class="process-supplier" [class.none]="!process.supplierCode">
-        {{ process.supplierCode || '-' }}
-      </span>
-    </td>
-    <td>
-      <div class="action-buttons">
-        <button type="button" class="btn btn-secondary btn-sm"
-          (click)="openInsertProcessBetween(item, process)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-        </button>
-        <button class="btn btn-sm" [class.btn-primary]="editingProcessSeq === process.seq && editingProcessItem === item"
-          (click)="openEditProcess(item, process)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-        </button>
-        <button class="btn btn-danger btn-sm" (click)="deleteProcess(item, process)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 6h18"></path>
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-          </svg>
-        </button>
-      </div>
-    </td>
-  </tr>
-
-  <!-- ── INSERT FORM ROW ── -->
-  <tr *ngIf="insertingProcessItem === item && insertAfterSeq === process.seq"
-    class="inline-form-row insert-mode">
-    <td></td>
-    <td></td>
-    <td></td>
-
-    <td>
-      <span class="form-seq-badge process-seq">{{ process.seq + 1 }}</span>
-    </td>
-
-    <td>
-      <input type="text" class="inline-input" placeholder="Process Code"
-        [(ngModel)]="insertProcessForm.code">
-    </td>
-
-    <td>
-      <div class="type-toggle">
-        <button class="type-btn" [class.active]="insertProcessForm.type === 1"
-          (click)="insertProcessForm.type = 1">
-          1
-        </button>
-        <button class="type-btn" [class.active]="insertProcessForm.type === 2"
-          (click)="insertProcessForm.type = 2">
-          2
-        </button>
-      </div>
-    </td>
-
-    <td>
-      <input *ngIf="insertProcessForm.type === 2" type="text" class="inline-input"
-        placeholder="Supplier" [(ngModel)]="insertProcessForm.supplierCode">
-      <span *ngIf="insertProcessForm.type === 1" class="form-placeholder">—</span>
-    </td>
-
-    <td>
-      <div class="action-buttons">
-        <button class="btn btn-primary btn-sm"
-          [disabled]="!insertProcessForm.code.trim()"
-          (click)="onInsertProcessSave(item)">
-          Save
-        </button>
-        <button class="btn btn-ghost btn-sm" (click)="onInsertProcessCancel()">
-          Cancel
-        </button>
-      </div>
-    </td>
-  </tr>
-
-  <!-- ── EDIT FORM ROW ── -->
-  <tr *ngIf="editingProcessItem === item && editingProcessSeq === process.seq"
-    class="inline-form-row edit-mode">
-    <td></td>
-    <td></td>
-    <td></td>
-
-    <td>
-      <span class="form-seq-badge process-seq">{{ process.seq }}</span>
-    </td>
-
-    <td>
-      <input type="text" class="inline-input" [(ngModel)]="editProcessForm.code">
-    </td>
-
-    <td>
-      <div class="type-toggle">
-        <button class="type-btn" [class.active]="editProcessForm.type === 1"
-          (click)="editProcessForm.type = 1">
-          1
-        </button>
-        <button class="type-btn" [class.active]="editProcessForm.type === 2"
-          (click)="editProcessForm.type = 2">
-          2
-        </button>
-      </div>
-    </td>
-
-    <td>
-      <input *ngIf="editProcessForm.type === 2" type="text" class="inline-input"
-        placeholder="Supplier" [(ngModel)]="editProcessForm.supplierCode">
-      <span *ngIf="editProcessForm.type === 1" class="form-placeholder">—</span>
-    </td>
-
-    <td>
-      <div class="action-buttons">
-        <button class="btn btn-primary btn-sm" (click)="onEditProcessSave(item, process)">
-          Save
-        </button>
-        <button class="btn btn-ghost btn-sm" (click)="editingProcessSeq = null">
-          Cancel
-        </button>
-      </div>
-    </td>
-  </tr>
-
-</ng-container>
-                  </tbody>
-                </table>
-
-                <!-- ── Add Process Button (shows when no processes OR as footer add) ── -->
-                <div style="padding: 10px 0;">
-                  <button *ngIf="insertingProcessItem !== item || insertAfterSeq !== null"
-                    class="btn btn-secondary btn-sm"
-                    style="margin-top: 8px;"
-                    (click)="openInsertProcessAtEnd(item)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Add Process
+        <table class="proc-tbl" style="table-layout:auto;">
+          <thead>
+            <tr>
+              <th style="width:50px;">Seq</th>
+              <th>Code</th>
+              <th style="width:150px;">Type</th>
+              <th>Supplier</th>
+              <th style="width:80px;" class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of item.processes; let procIdx = index">
+              <td><span class="seq-b">{{ p.seq }}</span></td>
+              <td><input type="text" [(ngModel)]="p.code" class="ipt ipt-mono" placeholder="e.g. DRILL"></td>
+              <td>
+                <select [(ngModel)]="p.type" class="ipt-sel">
+                  <option [ngValue]="1">Internal</option>
+                  <option [ngValue]="2">External</option>
+                </select>
+              </td>
+              <td>
+                <input *ngIf="p.type === 2" type="text" [(ngModel)]="p.supplierCode" class="ipt" placeholder="Supplier">
+                <span *ngIf="p.type === 1" class="text-muted d-block text-center">—</span>
+              </td>
+              <td>
+                <div class="d-flex gap-1 justify-content-center">
+                  <button class="ico-btn ins sm" title="Insert below" (click)="insertProcessInBulkItem(item, procIdx)">
+                    <i class="bi bi-plus"></i>
                   </button>
-
-                  <!-- ── Inline Add Process Form (appears at bottom) ── -->
-                  <table *ngIf="insertingProcessItem === item && insertAfterSeq === null"
-                    class="mini-table" style="margin-top: 8px;">
-                    <tbody>
-                      <tr class="inline-form-row insert-mode">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-
-                        <td>
-                          <span class="form-seq-badge process-seq">
-                            {{ item.processes.length + 1 }}
-                          </span>
-                        </td>
-
-                        <td>
-                          <input type="text" class="inline-input"
-                            placeholder="Process Code"
-                            [(ngModel)]="insertProcessForm.code">
-                        </td>
-
-                        <td>
-                          <div class="type-toggle">
-                            <button class="type-btn"
-                              [class.active]="insertProcessForm.type === 1"
-                              (click)="insertProcessForm.type = 1">1</button>
-                            <button class="type-btn"
-                              [class.active]="insertProcessForm.type === 2"
-                              (click)="insertProcessForm.type = 2">2</button>
-                          </div>
-                        </td>
-
-                        <td>
-                          <input *ngIf="insertProcessForm.type === 2"
-                            type="text" class="inline-input"
-                            placeholder="Supplier"
-                            [(ngModel)]="insertProcessForm.supplierCode">
-                          <span *ngIf="insertProcessForm.type === 1"
-                            class="form-placeholder">—</span>
-                        </td>
-
-                        <td>
-                          <div class="action-buttons">
-                            <button class="btn btn-primary btn-sm"
-                              [disabled]="!insertProcessForm.code.trim()"
-                              (click)="onInsertProcessSave(item)">
-                              Save
-                            </button>
-                            <button class="btn btn-ghost btn-sm"
-                              (click)="onInsertProcessCancel()">
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <button class="ico-btn d sm" (click)="removeProcessFromBulkItem(item, procIdx)">
+                    <i class="bi bi-x"></i>
+                  </button>
                 </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-              </div>
-            </td>
-          </tr>
-        </ng-container>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="modal-overlay" *ngIf="showBulkUpdateModal">
-    <div class="modal-container" style="width: 90%; max-width: 1000px;">
-      <div class="modal-header">
-        <h3 style="margin:0">Multi-Item Bulk Editor</h3>
-        <p>Editing {{ bulkEditItems.length }} selected items</p>
-      </div>
-
-      <div class="modal-body" style="margin-top: 20px;">
-        <div *ngFor="let item of bulkEditItems; let itemIdx = index"
-          style="margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-
-          <div
-            style="background: #f8fafc; padding: 10px 15px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px;">
-            <span class="item-badge">{{ item.badge }}</span>
-            <input type="text" [(ngModel)]="item.code" class="inline-input" style="font-weight: bold; width: 200px;">
-            <span style="color: #64748b; font-size: 12px;">(Item {{itemIdx + 1}})</span>
-          </div>
-
-          <table class="mini-table" style="width: 100%; border-collapse: collapse;">
-            <thead style="background: #ffffff;">
-              <tr>
-                <th style="width: 30px;">Seq</th>
-                <th>Process Code</th>
-                <th style="width: 130px;">Type</th>
-                <th>Supplier</th>
-                <th style="width: 100px; text-align: center;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let p of item.processes; let procIdx = index" style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px; text-align: center;">
-                  <span class="process-seq" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">
-                    {{p.seq}}
-                  </span>
-                </td>
-                <td style="padding: 5px;">
-                  <input type="text" [(ngModel)]="p.code" class="inline-input" placeholder="e.g. DRILL">
-                </td>
-                <td style="padding: 5px;">
-                  <select [(ngModel)]="p.type" class="inline-input">
-                    <option [ngValue]="1">Internal</option>
-                    <option [ngValue]="2">External</option>
-                  </select>
-                </td>
-                <td style="padding: 5px;">
-                  <input *ngIf="p.type === 2" type="text" [(ngModel)]="p.supplierCode" class="inline-input"
-                    placeholder="Supplier">
-                  <span *ngIf="p.type === 1" class="form-placeholder" style="display:block; text-align:center;">—</span>
-                </td>
-                <td style="padding: 5px;">
-                  <div style="display: flex; gap: 5px; justify-content: center;">
-                    <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 16px;"
-                      title="Insert process below" (click)="insertProcessInBulkItem(item, procIdx)">
-                      +
-                    </button>
-
-                    <button class="btn btn-danger btn-sm" style="padding: 2px 8px;"
-                      (click)="removeProcessFromBulkItem(item, procIdx)">
-                      &times;
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div style="padding: 10px; background: #ffffff;">
-            <button class="btn btn-secondary btn-sm" (click)="addProcessToBulkItem(item)">+ Add Step to
-              {{item.code}}</button>
-          </div>
+        <div class="p-2" style="background:var(--bg);">
+          <button class="btn-a ghost sm" (click)="addProcessToBulkItem(item)">
+            <i class="bi bi-plus-lg"></i> Add step to {{ item.code }}
+          </button>
         </div>
       </div>
+    </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-ghost" (click)="showBulkUpdateModal = false">Cancel</button>
-        <button class="btn btn-primary" (click)="applyBulkProcessUpdate()">Save All Changes</button>
-      </div>
+    <div class="modal-ft d-flex justify-content-end gap-2">
+      <button class="btn-a ghost" (click)="showBulkUpdateModal = false">
+        <i class="bi bi-x-lg"></i> Cancel
+      </button>
+      <button class="btn-a primary" (click)="applyBulkProcessUpdate()">
+        <i class="bi bi-check2-all"></i> Save All Changes
+      </button>
     </div>
   </div>
-</main>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     BULK ADD MODAL  (new — create multiple items + processes at once)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="modal-back" *ngIf="showBulkAddModal">
+  <div class="ba-modal-box">
+
+    <!-- Saving overlay -->
+    <div class="ba-saving" *ngIf="bulkAddSaving">
+      <div class="text-center">
+        <div class="spin mx-auto mb-2"></div>
+        <p class="fw-bold text-muted small mb-0">Saving items…</p>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="ba-hdr d-flex align-items-start justify-content-between gap-3">
+      <div>
+        <h3><i class="bi bi-collection-fill me-2" style="color:#a78bfa;"></i>Add Multiple Items</h3>
+        <p>Define items and their processes below — everything saves in one click.</p>
+      </div>
+      <button class="ico-btn lg"
+              style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;"
+              (click)="showBulkAddModal = false">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="ba-body">
+
+      <!-- Validation error -->
+      <div class="ba-error" *ngIf="bulkAddError">
+        <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
+        <span>{{ bulkAddError }}</span>
+        <button class="ico-btn sm ms-auto"
+                style="border:none;background:transparent;color:var(--danger);"
+                (click)="bulkAddError = ''">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <!-- Draft item cards -->
+      <div class="draft-card" *ngFor="let item of bulkAddItems; let itemIdx = index">
+
+        <!-- Card header -->
+        <div class="draft-card-hdr">
+          <div class="draft-num">{{ itemIdx + 1 }}</div>
+          <div class="draft-badge" [class.empty]="!item.badge">{{ item.badge || '?' }}</div>
+          <input class="draft-code-ipt"
+                 placeholder="Item Code  (e.g. SF5101)"
+                 [(ngModel)]="item.code"
+                 (ngModelChange)="onBulkItemCodeChange(item)"
+                 maxlength="20" />
+          <span class="ms-auto small me-2" style="color:rgba(255,255,255,.45);white-space:nowrap;">
+            {{ item.processes.length }} proc{{ item.processes.length !== 1 ? 's' : '' }}
+          </span>
+          <button class="ico-btn sm"
+                  style="background:rgba(220,38,38,.25);border-color:rgba(220,38,38,.35);color:#fca5a5;"
+                  title="Remove this item"
+                  [disabled]="bulkAddItems.length === 1"
+                  (click)="removeBulkDraftItem(item.id)">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+
+        <!-- Processes -->
+        <div class="draft-proc-body">
+
+          <!-- Column labels -->
+          <div class="proc-col-lbl">
+            <div></div>
+            <div class="stat-lbl">Process Code</div>
+            <div class="stat-lbl">Type</div>
+            <div class="stat-lbl">Supplier</div>
+            <div></div>
+          </div>
+
+          <!-- Process rows -->
+          <div class="proc-row" *ngFor="let proc of item.processes; let pi = index">
+            <div class="proc-seq-lbl">{{ pi + 1 }}</div>
+            <input class="ipt ipt-mono" placeholder="e.g. DRILL"
+                   [(ngModel)]="proc.code" maxlength="20" />
+            <div class="tgl">
+              <button class="tgl-btn" [class.tgl-int]="proc.type === 1" (click)="proc.type = 1">Int</button>
+              <button class="tgl-btn" [class.tgl-ext]="proc.type === 2" (click)="proc.type = 2">Ext</button>
+            </div>
+            <div>
+              <input *ngIf="proc.type === 2" class="ipt" placeholder="Supplier code" [(ngModel)]="proc.supplierCode" />
+              <span *ngIf="proc.type === 1" class="text-muted small d-block text-center">—</span>
+            </div>
+            <button class="ico-btn sm d" title="Remove process"
+                    [disabled]="item.processes.length === 1"
+                    (click)="removeProcessFromDraftItem(item, pi)">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+
+          <!-- Add process -->
+          <div class="proc-add-row">
+            <div class="proc-add-line"></div>
+            <button class="btn-a ghost sm flex-shrink-0" style="font-size:11.5px;"
+                    (click)="addProcessToDraftItem(item)">
+              <i class="bi bi-plus-lg"></i> Add Process
+            </button>
+            <div class="proc-add-line"></div>
+          </div>
+
+        </div>
+      </div><!-- /draft-card -->
+
+      <!-- Add another item -->
+      <div class="add-item-row" (click)="addBulkDraftItem()">
+        <i class="bi bi-plus-circle me-2"></i>Add Another Item
+      </div>
+
+    </div><!-- /ba-body -->
+
+    <!-- Footer -->
+    <div class="ba-ft d-flex align-items-center justify-content-between gap-3">
+      <span class="text-muted small">
+        <i class="bi bi-info-circle me-1"></i>
+        <strong class="text-dark">{{ bulkAddItems.length }}</strong>
+        item{{ bulkAddItems.length !== 1 ? 's' : '' }} ready to save
+      </span>
+      <div class="d-flex gap-2">
+        <button class="btn-a ghost" (click)="showBulkAddModal = false">
+          <i class="bi bi-x-lg"></i> Cancel
+        </button>
+        <button class="btn-a bulk-add-btn" [disabled]="bulkAddSaving" (click)="submitBulkAdd()">
+          <i class="bi bi-check2-all"></i>
+          Save {{ bulkAddItems.length }} Item{{ bulkAddItems.length !== 1 ? 's' : '' }}
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bootstrap JS bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmMEiDCyTJBTNGwmvVmAvhBMwSXf"
+        crossorigin="anonymous"></script>

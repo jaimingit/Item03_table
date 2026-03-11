@@ -4,12 +4,26 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Item, Process } from '../../models/item02.model';
 
+// ── Bulk-add draft interfaces (outside class, at file level) ──
+interface DraftProcess {
+  code:         string;
+  type:         1 | 2;
+  supplierCode: string;
+}
+
+interface DraftItem {
+  id:        number;   // local tracking only — never sent to backend
+  code:      string;
+  badge:     string;
+  processes: DraftProcess[];
+}
+
 @Component({
   selector: 'app-item-table',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './app.item03.html',
-  styleUrls: ['./app.item03.css'],
+  // styleUrls: ['./app.item03.css'],
   encapsulation: ViewEncapsulation.None
 })
 export class ItemTableComponent implements OnInit {
@@ -36,16 +50,23 @@ export class ItemTableComponent implements OnInit {
   // ── Process insert form state ──
   insertingProcessItem: Item | null = null;
   insertProcessForm1 = { code: '', type: 1, supplierCode: '' };
-  insertProcessForm = { code: '', type: 1, supplierCode: '' };
+  insertProcessForm  = { code: '', type: 1, supplierCode: '' };
 
   // ── Process edit form state ──
   editingProcessSeq: number | null = null;
   editingProcessItem: Item | null = null;
   editProcessForm = { code: '', type: 1, supplierCode: '' };
 
-  // ── Bulk state ──
+  // ── Bulk update state (existing) ──
   showBulkUpdateModal: boolean = false;
   bulkEditItems: any[] = [];
+
+  // ── Bulk ADD state (new) ──
+  showBulkAddModal  = false;
+  bulkAddItems: DraftItem[] = [];
+  bulkAddNextId     = 1;
+  bulkAddSaving     = false;
+  bulkAddError      = '';
 
   // ── Data ──
   items: (Item & { selected?: boolean })[] = [];
@@ -53,7 +74,7 @@ export class ItemTableComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadItems();
@@ -62,10 +83,10 @@ export class ItemTableComponent implements OnInit {
   // ── Map backend response to frontend model ──
   private mapItem(item: any): Item & { selected: boolean } {
     return {
-      code:      item.code ?? item.Code,
-      badge:     item.badge ?? item.Badge ?? (item.code ?? item.Code).charAt(0),
-      expanded:  false,
-      selected:  false,
+      code: item.code ?? item.Code,
+      badge: item.badge ?? item.Badge ?? (item.code ?? item.Code).charAt(0),
+      expanded: false,
+      selected: false,
       processes: (item.processes ?? item.Processes ?? []).map((p: any) => ({
         seq:          p.seq          ?? p.Seq,
         code:         p.code         ?? p.Code,
@@ -79,17 +100,20 @@ export class ItemTableComponent implements OnInit {
   // LOAD — GET /api/Item
   // ════════════════════════════════════════
   loadItems(): void {
-    this.isLoading = true;
+    this.isLoading    = true;
     this.errorMessage = '';
+
     this.http.get<any[]>(this.apiUrl).subscribe({
       next: (data) => {
-        this.items = data.map(i => this.mapItem(i));
-        this.isLoading = false;
-        this.cdr.detectChanges();
+        setTimeout(() => {
+          this.items     = data.map(i => this.mapItem(i));
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        }, 2000);
       },
       error: (err) => {
         this.errorMessage = 'Failed to load items.';
-        this.isLoading = false;
+        this.isLoading    = false;
         this.cdr.detectChanges();
         console.error(err);
       }
@@ -110,21 +134,85 @@ export class ItemTableComponent implements OnInit {
   }
 
   // ════════════════════════════════════════
+  // SUMMARY COUNTS
+  // ════════════════════════════════════════
+  get totalCount():           number { return this.items.length; }
+  get processCount():         number { return this.items.reduce((s, i) => s + i.processes.length, 0); }
+  get supplierCount():        number { return new Set(this.items.flatMap(i => i.processes.map(p => p.supplierCode))).size; }
+  get internalProcessCount(): number { return this.items.reduce((s, i) => s + i.processes.filter(p => p.type === 1).length, 0); }
+  get externalProcessCount(): number { return this.items.reduce((s, i) => s + i.processes.filter(p => p.type === 2).length, 0); }
+
+  // ════════════════════════════════════════
+  // PROCESS REORDERING
+  // ════════════════════════════════════════
+  // moveProcessUp(item: any, index: number): void {
+  //   if (index === 0) return;
+  //   this.saveReorder(item, index, index - 1);
+  // }
+
+  // moveProcessDown(item: any, index: number): void {
+  //   if (index === item.processes.length - 1) return;
+  //   this.saveReorder(item, index, index + 1);
+  // }
+
+  // saveReorder(item: any, fromIndex: number, toIndex: number): void {
+  //   const temp = item.processes[fromIndex];
+  //   item.processes[fromIndex] = item.processes[toIndex];
+  //   item.processes[toIndex]   = temp;
+  //   item.processes.forEach((p: any, i: number) => p.seq = i + 1);
+  //   this.cdr.detectChanges();
+
+  //   this.http.put<Item>(
+  //     `${this.apiUrl}/${item.code}/processes/reorder?from=${fromIndex}&to=${toIndex}`,
+  //     {},
+  //     { headers: { 'Content-Type': 'application/json' } }
+  //   ).subscribe({
+  //     next: (updated: Item) => {
+  //       item.processes = updated.processes.map((p: Process) => ({
+  //         seq:          p.seq,
+  //         code:         p.code,
+  //         type:         p.type,
+  //         supplierCode: p.supplierCode ?? null
+  //       }));
+  //       this.cdr.detectChanges();
+  //     },
+  //     error: (err) => {
+  //       alert('Failed to reorder.');
+  //       console.error(err);
+  //       this.loadItems();
+  //     }
+  //   });
+  // }
+
+  // ════════════════════════════════════════
   // SELECTION
   // ════════════════════════════════════════
-  getSelectedCount(): number { return this.items.filter(i => i.selected).length; }
-  isAllSelected(): boolean   { return this.items.length > 0 && this.items.every(i => i.selected); }
-  toggleAllSelection(event: any): void { this.filteredItems.forEach(i => i.selected = event.target.checked); }
-  clearSelection(): void     { this.items.forEach(i => i.selected = false); }
-  toggleProcess(item: Item): void { item.expanded = !item.expanded; }
+  getSelectedCount(): number  { return this.items.filter(i => i.selected).length; }
+  isAllSelected():    boolean { return this.items.length > 0 && this.items.every(i => i.selected); } 
+
+  toggleAllSelection(event: any): void {
+    this.filteredItems.forEach(i => i.selected = event.target.checked);
+  }
+
+  clearSelection(): void { this.items.forEach(i => i.selected = false); }
+
+  toggleProcess(item: any): void {
+    const isAlreadyOpen = item.expanded;
+    this.items.forEach(i => i.expanded = false);
+    if (!isAlreadyOpen) item.expanded = true;
+    this.insertingProcessItem = null;
+    this.insertAfterSeq       = null;
+    this.editingProcessItem   = null;
+    this.editingProcessSeq    = null;
+  }
 
   // ════════════════════════════════════════
   // ITEM INSERT — POST /api/Item
   // ════════════════════════════════════════
   openInsertForm(): void {
     this.editingItemCode = null;
-    this.insertItemForm = { code: '', badge: '' };
-    this.showInsertForm = true;
+    this.insertItemForm  = { code: '', badge: '' };
+    this.showInsertForm  = true;
   }
 
   onInsertItemCodeChange(): void {
@@ -146,7 +234,9 @@ export class ItemTableComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        alert(err.status === 409 ? `Item "${code}" already exists.` : 'Failed to create item.');
+        alert(err.status === 409
+          ? `Item "${code}" already exists.`
+          : 'Failed to create item.');
         console.error(err);
       }
     });
@@ -166,7 +256,7 @@ export class ItemTableComponent implements OnInit {
       this.editingItemCode = null;
     } else {
       this.editingItemCode = item.code;
-      this.editItemForm = { code: item.code, badge: item.badge };
+      this.editItemForm    = { code: item.code, badge: item.badge };
     }
   }
 
@@ -189,7 +279,9 @@ export class ItemTableComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        alert(err.status === 409 ? `Item "${code}" already exists.` : 'Failed to update item.');
+        alert(err.status === 409
+          ? `Item "${code}" already exists.`
+          : 'Failed to update item.');
         console.error(err);
       }
     });
@@ -209,10 +301,7 @@ export class ItemTableComponent implements OnInit {
         if (this.editingItemCode === item.code) this.editingItemCode = null;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        alert('Failed to delete item.');
-        console.error(err);
-      }
+      error: (err) => { alert('Failed to delete item.'); console.error(err); }
     });
   }
 
@@ -222,87 +311,80 @@ export class ItemTableComponent implements OnInit {
 
     this.http.delete(this.apiUrl).subscribe({
       next: () => {
-        this.items = [];
-        this.showInsertForm = false;
-        this.editingItemCode = null;
+        this.items                = [];
+        this.showInsertForm       = false;
+        this.editingItemCode      = null;
         this.insertingProcessItem = null;
-        this.editingProcessItem = null;
+        this.editingProcessItem   = null;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        alert('Failed to delete all items.');
-        console.error(err);
-      }
+      error: (err) => { alert('Failed to delete all items.'); console.error(err); }
     });
   }
 
   // ════════════════════════════════════════
   // PROCESS INSERT — POST /api/Item/{code}/processes
   // ════════════════════════════════════════
-
   openInsertProcess(item: Item): void {
-    this.editingProcessSeq = null;
-    this.editingProcessItem = null;
-    // this.insertAfterSeq = process.seq;
-    this.insertProcessForm1 = { code: '', type: 1, supplierCode: '' };
-    this.insertingProcess= item;
-
+    this.editingProcessSeq    = null;
+    this.editingProcessItem   = null;
+    this.insertProcessForm1   = { code: '', type: 1, supplierCode: '' };
+    this.insertingProcess     = item;
   }
 
   openInsertProcessBetween(item: any, process: any): void {
     this.editingProcessItem = null;
-    this.editingProcessSeq = null;
+    this.editingProcessSeq  = null;
     if (this.insertingProcessItem === item && this.insertAfterSeq === process.seq) {
       this.insertingProcessItem = null;
-      this.insertAfterSeq = null;
+      this.insertAfterSeq       = null;
     } else {
       this.insertingProcessItem = item;
-      this.insertAfterSeq = process.seq;
-      this.insertProcessForm = { code: '', type: 1, supplierCode: '' };
+      this.insertAfterSeq       = process.seq;
+      this.insertProcessForm    = { code: '', type: 1, supplierCode: '' };
     }
   }
-// Opens insert form at the END of the process list (not between rows)
-openInsertProcessAtEnd(item: Item): void {
-  this.editingProcessItem = null;
-  this.editingProcessSeq = null;
-  this.insertAfterSeq = null;        // ← null means "append at end"
-  this.insertingProcessItem = item;
-  this.insertProcessForm = { code: '', type: 1, supplierCode: '' };
-}
+
+  openInsertProcessAtEnd(item: Item): void {
+    this.editingProcessItem   = null;
+    this.editingProcessSeq    = null;
+    this.insertAfterSeq       = null;
+    this.insertingProcessItem = item;
+    this.insertProcessForm    = { code: '', type: 1, supplierCode: '' };
+  }
+
   onInsertProcessSave(item: any): void {
     const payload = {
       insertAfterSeq: this.insertAfterSeq,
       newProcess: {
-        seq: 0,
-        code: this.insertProcessForm.code.trim().toUpperCase(),
-        type: this.insertProcessForm.type,
-        supplierCode: this.insertProcessForm.type === 2 ? this.insertProcessForm.supplierCode : null
+        seq:          0,
+        code:         this.insertProcessForm.code.trim().toUpperCase(),
+        type:         this.insertProcessForm.type,
+        supplierCode: this.insertProcessForm.type === 2
+          ? this.insertProcessForm.supplierCode : null
       }
     };
 
     this.http.post<any>(`${this.apiUrl}/${item.code}/processes`, payload).subscribe({
       next: (updatedItem) => {
         item.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-          seq: p.seq ?? p.Seq,
-          code: p.code ?? p.Code,
-          type: p.type ?? p.Type,
+          seq:          p.seq          ?? p.Seq,
+          code:         p.code         ?? p.Code,
+          type:         p.type         ?? p.Type,
           supplierCode: p.supplierCode ?? p.SupplierCode ?? null
         }));
-        this.insertAfterSeq = null;
+        this.insertAfterSeq       = null;
         this.insertingProcessItem = null;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        alert('Failed to insert process.');
-        console.error(err);
-      }
+      error: (err) => { alert('Failed to insert process.'); console.error(err); }
     });
   }
 
   onInsertProcessCancel(): void {
     this.insertingProcessItem = null;
-    this.insertAfterSeq = null;
-    this.insertProcessForm = { code: '', type: 1, supplierCode: '' };
+    this.insertAfterSeq       = null;
+    this.insertProcessForm    = { code: '', type: 1, supplierCode: '' };
   }
 
   trackProcess(index: number, process: any): number { return process.seq; }
@@ -312,16 +394,16 @@ openInsertProcessAtEnd(item: Item): void {
   // ════════════════════════════════════════
   openEditProcess(item: Item, process: Process): void {
     this.insertingProcessItem = null;
-    this.insertAfterSeq = null;
+    this.insertAfterSeq       = null;
     if (this.editingProcessSeq === process.seq && this.editingProcessItem === item) {
-      this.editingProcessSeq = null;
+      this.editingProcessSeq  = null;
       this.editingProcessItem = null;
     } else {
-      this.editingProcessSeq = process.seq;
+      this.editingProcessSeq  = process.seq;
       this.editingProcessItem = item;
-      this.editProcessForm = {
-        code: process.code,
-        type: process.type,
+      this.editProcessForm    = {
+        code:         process.code,
+        type:         process.type,
         supplierCode: process.supplierCode ?? ''
       };
     }
@@ -332,9 +414,9 @@ openInsertProcessAtEnd(item: Item): void {
     if (!code) return;
 
     const payload = {
-      seq: process.seq,
+      seq:          process.seq,
       code,
-      type: this.editProcessForm.type,
+      type:         this.editProcessForm.type,
       supplierCode: this.editProcessForm.type === 2
         ? (this.editProcessForm.supplierCode.trim() || null) : null
     };
@@ -342,24 +424,21 @@ openInsertProcessAtEnd(item: Item): void {
     this.http.put<any>(`${this.apiUrl}/${item.code}/processes/${process.seq}`, payload).subscribe({
       next: (updatedItem) => {
         item.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-          seq: p.seq ?? p.Seq,
-          code: p.code ?? p.Code,
-          type: p.type ?? p.Type,
+          seq:          p.seq          ?? p.Seq,
+          code:         p.code         ?? p.Code,
+          type:         p.type         ?? p.Type,
           supplierCode: p.supplierCode ?? p.SupplierCode ?? null
         }));
-        this.editingProcessSeq = null;
+        this.editingProcessSeq  = null;
         this.editingProcessItem = null;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        alert('Failed to update process.');
-        console.error(err);
-      }
+      error: (err) => { alert('Failed to update process.'); console.error(err); }
     });
   }
 
   onEditProcessCancel(): void {
-    this.editingProcessSeq = null;
+    this.editingProcessSeq  = null;
     this.editingProcessItem = null;
   }
 
@@ -372,29 +451,27 @@ openInsertProcessAtEnd(item: Item): void {
     this.http.delete<any>(`${this.apiUrl}/${item.code}/processes/${process.seq}`).subscribe({
       next: (updatedItem) => {
         item.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-          seq: p.seq ?? p.Seq,
-          code: p.code ?? p.Code,
-          type: p.type ?? p.Type,
+          seq:          p.seq          ?? p.Seq,
+          code:         p.code         ?? p.Code,
+          type:         p.type         ?? p.Type,
           supplierCode: p.supplierCode ?? p.SupplierCode ?? null
         }));
         if (this.editingProcessSeq === process.seq && this.editingProcessItem === item) {
-          this.editingProcessSeq = null;
+          this.editingProcessSeq  = null;
           this.editingProcessItem = null;
         }
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        alert('Failed to delete process.');
-        console.error(err);
-      }
+      error: (err) => { alert('Failed to delete process.'); console.error(err); }
     });
   }
 
   // ════════════════════════════════════════
-  // BULK UPDATE MODAL — PUT /api/Item/{code}/processes (per item)
+  // BULK UPDATE MODAL (existing)
+  // PUT /api/Item/{code}/processes  per item
   // ════════════════════════════════════════
   openBulkUpdate(): void {
-    this.bulkEditItems = JSON.parse(JSON.stringify(this.items.filter(i => i.selected)));
+    this.bulkEditItems       = JSON.parse(JSON.stringify(this.items.filter(i => i.selected)));
     this.showBulkUpdateModal = true;
   }
 
@@ -415,7 +492,6 @@ openInsertProcessAtEnd(item: Item): void {
   applyBulkProcessUpdate(): void {
     if (!confirm(`Save changes to all ${this.bulkEditItems.length} items?`)) return;
 
-    // Fire one PUT per item
     const requests = this.bulkEditItems.map(editedItem =>
       this.http.put<any>(
         `${this.apiUrl}/${editedItem.code}/processes`,
@@ -429,9 +505,9 @@ openInsertProcessAtEnd(item: Item): void {
           i.code === (updatedItem.code ?? updatedItem.Code));
         if (mainItem) {
           mainItem.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-            seq: p.seq ?? p.Seq,
-            code: p.code ?? p.Code,
-            type: p.type ?? p.Type,
+            seq:          p.seq          ?? p.Seq,
+            code:         p.code         ?? p.Code,
+            type:         p.type         ?? p.Type,
             supplierCode: p.supplierCode ?? p.SupplierCode ?? null
           }));
         }
@@ -445,10 +521,115 @@ openInsertProcessAtEnd(item: Item): void {
     });
   }
 
-  // ── Unused legacy methods kept for compatibility ──
-  bulkDelete(): void {}
-  bulkUpdate(): void {}
+  // ════════════════════════════════════════
+  // BULK ADD MODAL (new)
+  // POST /api/Item/bulk
+  // ════════════════════════════════════════
+
+  openBulkAddModal(): void {
+    this.bulkAddItems  = [];
+    this.bulkAddError  = '';
+    this.bulkAddSaving = false;
+    this.bulkAddNextId = 1;
+    this.addBulkDraftItem();          // start with one blank item row
+    this.showBulkAddModal = true;
+  }
+
+  addBulkDraftItem(): void {
+    this.bulkAddItems.push({
+      id:        this.bulkAddNextId++,
+      code:      '',
+      badge:     '',
+      processes: [this.emptyDraftProcess()]
+    });
+  }
+
+  removeBulkDraftItem(id: number): void {
+    this.bulkAddItems = this.bulkAddItems.filter(i => i.id !== id);
+  }
+
+  onBulkItemCodeChange(item: DraftItem): void {
+    item.badge = item.code.trim()
+      ? item.code.trim().charAt(0).toUpperCase()
+      : '';
+  }
+
+  addProcessToDraftItem(item: DraftItem): void {
+    item.processes.push(this.emptyDraftProcess());
+  }
+
+  removeProcessFromDraftItem(item: DraftItem, index: number): void {
+    item.processes.splice(index, 1);
+  }
+
+  private emptyDraftProcess(): DraftProcess {
+    return { code: '', type: 1, supplierCode: '' };
+  }
+
+  private validateBulkAdd(): string {
+    if (!this.bulkAddItems.length)
+      return 'Add at least one item.';
+
+    const seenCodes: string[] = [];
+
+    for (const item of this.bulkAddItems) {
+      const code = item.code.trim().toUpperCase();
+
+      if (!code)
+        return 'All item codes are required.';
+
+      if (seenCodes.includes(code))
+        return `Duplicate item code: "${code}".`;
+      seenCodes.push(code);
+
+      if (!item.processes.length)
+        return `Item "${code}" must have at least one process.`;
+
+      for (let i = 0; i < item.processes.length; i++) {
+        const p = item.processes[i];
+        if (!p.code.trim())
+          return `Process ${i + 1} in item "${code}" is missing a code.`;
+        if (p.type === 2 && !p.supplierCode.trim())
+          return `Process ${i + 1} in item "${code}" requires a supplier (External).`;
+      }
+    }
+    return '';
+  }
+
+  submitBulkAdd(): void {
+    this.bulkAddError = this.validateBulkAdd();
+    if (this.bulkAddError) return;
+
+    this.bulkAddSaving = true;
+
+    const payload = this.bulkAddItems.map(item => ({
+      code: item.code.trim().toUpperCase(),
+      processes: item.processes.map((p, i) => ({
+        seq:          i + 1,
+        code:         p.code.trim().toUpperCase(),
+        type:         p.type,
+        supplierCode: p.type === 2 ? (p.supplierCode.trim() || null) : null
+      }))
+    }));
+
+    this.http.post<any[]>(`${this.apiUrl}/bulk`, payload).subscribe({
+      next: (createdItems) => {
+        const mapped = createdItems.map(i => this.mapItem(i));
+        this.items.unshift(...mapped);
+        this.bulkAddSaving    = false;
+        this.showBulkAddModal = false;
+        this.bulkAddItems     = [];
+        this.bulkAddError     = '';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.bulkAddSaving = false;
+        this.bulkAddError  = err.status === 409
+          ? (err.error?.message ?? 'One or more item codes already exist.')
+          : (err.error?.message ?? 'Failed to save. Please try again.');
+        console.error(err);
+      }
+    });
+  }
+
 }
-
-
- 
