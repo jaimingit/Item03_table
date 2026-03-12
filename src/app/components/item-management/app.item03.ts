@@ -121,17 +121,61 @@ export class ItemTableComponent implements OnInit {
   }
 
   // ── Search filter ──
-  get filteredItems(): (Item & { selected?: boolean })[] {
-    const term = this.searchTerm.trim().toLowerCase();
-    if (!term) return this.items;
+get filteredItems(): (Item & { selected?: boolean })[] {
+  const term = this.searchTerm.trim().toLowerCase();
+  if (!term) return this.items;
+
+  const searchTerms = term
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  // Filter items based on whether ANY process (or item code) matches
+  return this.items.filter(item =>
+    searchTerms.some(t =>
+      item.code.toLowerCase().includes(t) ||
+      item.processes.some(p => p.code.toLowerCase().includes(t)) ||
+      item.processes.some(p => p.supplierCode?.toLowerCase().includes(t)) ||
+      item.processes.some(p => (p.type === 1 ? 'internal' : 'external').includes(t))
+    )
+  );
+} // this is use for the search functionality in the html template. 
+  // It filters the items based on the search term entered by the user. 
+  // The search term can be a comma-separated list of terms, and the filter checks if any of those terms are included in the item code or any of its process codes.
+
+  // ════════════════════════════════════════
+  // process type filter model
+  // ════════════════════════════════════════
+// Selected process type filter
+filterProcessType: 'all' | 'internal' | 'external' = 'all';
+
+// Filtered processes inside an item based on search term AND process type
+filterProcesses(processes: Process[]): Process[] {
+  const term = this.searchTerm?.trim().toLowerCase();
+  let filtered = [...processes];
+
+  // Filter by process type from dropdown
+  if (this.filterProcessType === 'internal') {
+    filtered = filtered.filter(p => p.type === 1);
+  } else if (this.filterProcessType === 'external') {
+    filtered = filtered.filter(p => p.type === 2);
+  }
+
+  // Filter by search term (code, supplierCode, type)
+  if (term) {
     const searchTerms = term.split(',').map(s => s.trim()).filter(s => s.length > 0);
-    return this.items.filter(item =>
+    filtered = filtered.filter(p =>
       searchTerms.some(t =>
-        item.code.toLowerCase().includes(t) ||
-        item.processes.some(p => p.code.toLowerCase().includes(t))
+        p.code.toLowerCase().includes(t) ||
+        (p.supplierCode?.toLowerCase().includes(t)) ||
+        (p.type === 1 ? 'internal' : 'external').includes(t)
       )
     );
   }
+
+  return filtered;
+}
+
 
   // ════════════════════════════════════════
   // SUMMARY COUNTS
@@ -223,7 +267,12 @@ export class ItemTableComponent implements OnInit {
   onInsertSave(): void {
     const code = this.insertItemForm.code.trim().toUpperCase();
     if (!code) return;
-
+    if (this.items.some(i => i.code.toUpperCase() === code)) {
+      alert(`Item "${code}" already exists.`);
+      return;
+    }
+    if (!confirm(`Create new item "${code}"?`)) return;
+  
     const payload = { code, badge: code.charAt(0), expanded: false, processes: [] };
 
     this.http.post<any>(this.apiUrl, payload).subscribe({
@@ -270,6 +319,14 @@ export class ItemTableComponent implements OnInit {
   onEditSave(item: Item): void {
     const code = this.editItemForm.code.trim().toUpperCase();
     if (!code) return;
+    if (code !== item.code && this.items.some(i => i.code.toUpperCase() === code)) {
+      alert(`Item "${code}" already exists.`);
+      return;
+    }
+    if (code !== item.code && !confirm(`Change item code from "${item.code}" to "${code}"? This will also update all associated processes.`)) {
+      return;
+    }
+
 
     this.http.put<any>(`${this.apiUrl}/${item.code}`, { code, badge: code.charAt(0) }).subscribe({
       next: (updated) => {
@@ -354,6 +411,22 @@ export class ItemTableComponent implements OnInit {
   }
 
   onInsertProcessSave(item: any): void {
+      if (!this.insertProcessForm.code.trim()) return;
+    if (this.insertProcessForm.type === 2 && !this.insertProcessForm.supplierCode.trim()) {
+      alert('External processes require a supplier code.');
+      return;
+    }
+    if (this.insertProcessForm.type !== 1 && this.insertProcessForm.type !== 2) {
+      alert('Process type must be Internal (1) or External (2).');
+      return;
+    }
+    //i want to add the condition like if the code already exists in the same item then it will show the alert message that process code already exists.
+      if (item.processes.some((p: any) => p.code.toUpperCase() === this.insertProcessForm.code.trim().toUpperCase())) {
+      alert(`Process "${this.insertProcessForm.code.trim()}" already exists.`);
+      return;
+    }
+
+
     const payload = {
       insertAfterSeq: this.insertAfterSeq,
       newProcess: {
@@ -412,6 +485,19 @@ export class ItemTableComponent implements OnInit {
   onEditProcessSave(item: Item, process: Process): void {
     const code = this.editProcessForm.code.trim().toUpperCase();
     if (!code) return;
+    if (this.editProcessForm.type === 2 && !this.editProcessForm.supplierCode.trim()) {
+      alert('External processes require a supplier code.');
+      return;
+    }
+    if (this.editProcessForm.type !== 1 && this.editProcessForm.type !== 2) {
+      alert('Process type must be Internal (1) or External (2).');
+      return;
+    }
+    if (code !== process.code && item.processes.some((p: any) => p.code.toUpperCase() === code)) {
+      alert(`Process "${code}" already exists.`);
+      return;
+    }
+
 
     const payload = {
       seq:          process.seq,
@@ -491,6 +577,22 @@ export class ItemTableComponent implements OnInit {
 
   applyBulkProcessUpdate(): void {
     if (!confirm(`Save changes to all ${this.bulkEditItems.length} items?`)) return;
+    if (this.bulkEditItems.some(i => i.processes.some((p: any) => !p.code.trim()))) {
+      alert('All processes must have a code.');
+      return;
+    }
+    if (this.bulkEditItems.some(i => i.processes.some((p: any) => p.type === 2 && !p.supplierCode.trim()))) {
+      alert('All external processes must have a supplier code.');
+      return;
+    }
+    if (this.bulkEditItems.some(i => i.processes.some((p: any) => p.type !== 1 && p.type !== 2))) {
+      alert('All processes must have a valid type (1 or 2).');
+      return;
+    }
+    if (this.bulkEditItems.some(i => i.processes.some((p: any) => p.code.trim() === ''))) {
+      alert('All processes must have a code.');
+      return;
+    }
 
     const requests = this.bulkEditItems.map(editedItem =>
       this.http.put<any>(
@@ -520,9 +622,28 @@ export class ItemTableComponent implements OnInit {
       console.error(err);
     });
   }
+  //=========================================
+  // bulk delete model
+  //=========================================
+  deleteSelectedItems(): void {
+    if (!confirm(`Delete all ${this.getSelectedCount()} selected items?`)) return;
+
+    const requests = this.items.filter(i => i.selected)
+      .map(i => this.http.delete(`${this.apiUrl}/${i.code}`).toPromise());
+    Promise.all(requests).then(() => {
+      this.items = this.items.filter(i => !i.selected);
+      this.cdr.detectChanges();
+    }).catch(err => {
+      alert('Failed to delete one or more items.');
+      console.error(err);
+    });
+
+  }
+    
+
 
   // ════════════════════════════════════════
-  // BULK ADD MODAL (new)
+  // BULK ADD MODAL 
   // POST /api/Item/bulk
   // ════════════════════════════════════════
 
@@ -581,9 +702,21 @@ export class ItemTableComponent implements OnInit {
       if (seenCodes.includes(code))
         return `Duplicate item code: "${code}".`;
       seenCodes.push(code);
+      if (this.items.some(i => i.code.toUpperCase() === code))
+        return `Item code "${code}" already exists.`;
 
       if (!item.processes.length)
         return `Item "${code}" must have at least one process.`;
+      if (item.processes.some(p => !p.code.trim()))
+        return `All processes in item "${code}" must have a code.`;
+      if (item.processes.some(p => p.type === 2 && !p.supplierCode.trim()))
+        return `All external processes in item "${code}" must have a supplier code.`;
+      if (item.processes.some(p => p.type !== 1 && p.type !== 2))
+        return `All processes in item "${code}" must have a valid type (1 or 2).`;
+      if (item.processes.some(p => p.code.trim() === ''))
+        return `All processes in item "${code}" must have a code.`;
+      if (item.processes.some(p => p.code.trim() && item.processes.filter((pp: any) => pp.code.trim().toUpperCase() === p.code.trim().toUpperCase()).length > 1))
+        return `Duplicate process code `;
 
       for (let i = 0; i < item.processes.length; i++) {
         const p = item.processes[i];

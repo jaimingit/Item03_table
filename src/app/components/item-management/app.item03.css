@@ -55,7 +55,7 @@
   .hdr-search input:focus { outline: none; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.32); }
 
   /* ─── Stat strip ────────────────────────────────────────────── */
-  .stat-strip { height: var(--stat-h); background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; }
+  .stat-strip { height: var(--stat-h); background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; justify-content: space-between; }
   .stat-strip::-webkit-scrollbar { height: 0; }
   .stat-cell {
     display: flex; align-items: center; gap: 10px;
@@ -164,6 +164,52 @@
   .re-btn { width: 24px; height: 24px; border: 1px solid var(--border-md); border-radius: 5px; background: var(--white); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; padding: 0; transition: all .13s; }
   .re-btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); color: #fff; }
   .re-btn:disabled { opacity: .25; cursor: not-allowed; }
+  /* Process filter dropdown */
+
+.process-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 200px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+
+.process-select {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-md);
+  background: var(--white);
+  font-size: 13px;
+  font-family: var(--sans);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+/* hover */
+.process-select:hover {
+  border-color: var(--accent);
+}
+
+/* focus */
+.process-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+
+/* dropdown arrow fix */
+.process-select option {
+  font-family: var(--sans);
+}
 
   /* ─── Inputs ────────────────────────────────────────────────── */
   .ipt { height: 31px; border: 1px solid var(--border-md); border-radius: 6px; padding: 0 9px; font-size: 13px; font-family: var(--sans); color: var(--text); background: var(--white); width: 100%; transition: border-color .14s, box-shadow .14s; }
@@ -261,6 +307,7 @@
   .proc-add-line { flex: 1; height: 1px; background: var(--border); }
   .add-item-row { border: 2px dashed var(--border-md); border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; color: var(--muted); font-size: 13.5px; font-weight: 600; }
   .add-item-row:hover { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
+
 
   /* ─── Responsive ────────────────────────────────────────────── */
   @media (max-width: 900px) {

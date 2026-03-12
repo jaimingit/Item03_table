@@ -1,10 +1,8 @@
-<link rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous">
-<link rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+  integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap"
+  rel="stylesheet">
 
 <!-- ══════════════════════════════════════════════════════════════
      HEADER
@@ -27,7 +25,7 @@
     <button class="btn-a bulk-add-btn" (click)="openBulkAddModal()">
       <i class="bi bi-collection-fill"></i><span>Add Item</span>
     </button>
-    <button class="btn-a danger" (click)="deleteAllItems()">
+    <button class="btn-a danger" (click)="deleteAllItems() ">
       <i class="bi bi-trash3"></i><span>Delete All</span>
     </button>
   </div>
@@ -36,37 +34,64 @@
 <!-- ══════════════════════════════════════════════════════════════
      STAT STRIP
      ══════════════════════════════════════════════════════════════ -->
-<div class="stat-strip d-flex align-items-center px-4" style="height:var(--stat-h);">
+<div class="stat-strip d-flex align-items-center px-4" style="height:var(--stat-h) ">
   <div class="stat-cell">
     <div class="stat-ico ico-blue"><i class="bi bi-layers"></i></div>
-    <div><div class="stat-lbl">Total Items</div><div class="stat-val">{{ items.length }}</div></div>
+    <div>
+      <div class="stat-lbl">Total Items</div>
+      <div class="stat-val">{{ items.length }}</div>
+    </div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-slate"><i class="bi bi-diagram-3"></i></div>
-    <div><div class="stat-lbl">Processes</div><div class="stat-val">{{ processCount }}</div></div>
+    <div>
+      <div class="stat-lbl">Processes</div>
+      <div class="stat-val">{{ processCount }}</div>
+    </div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-amber"><i class="bi bi-building"></i></div>
-    <div><div class="stat-lbl">Suppliers</div><div class="stat-val">{{ supplierCount }}</div></div>
+    <div>
+      <div class="stat-lbl">Suppliers</div>
+      <div class="stat-val">{{ supplierCount }}</div>
+    </div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-green"><i class="bi bi-house-gear"></i></div>
-    <div><div class="stat-lbl">Internal</div><div class="stat-val">{{ internalProcessCount }}</div></div>
+    <div>
+      <div class="stat-lbl">Internal</div>
+      <div class="stat-val">{{ internalProcessCount }}</div>
+    </div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-red"><i class="bi bi-arrow-left-right"></i></div>
-    <div><div class="stat-lbl">External</div><div class="stat-val">{{ externalProcessCount }}</div></div>
+    <div>
+      <div class="stat-lbl">External</div>
+      <div class="stat-val">{{ externalProcessCount }}</div>
+    </div>
+  </div>
+  <div class="process-filter flex-shrink-0">
+
+    <select class="process-select" [(ngModel)]="filterProcessType">
+      <option value="all">All Processes</option>
+      <option value="internal">Internal Processes</option>
+      <option value="external">External Processes</option>
+    </select>
   </div>
 </div>
 
 <!-- Bulk selection toolbar -->
-<div class="bulk-bar d-flex align-items-center gap-2 px-4 py-2" *ngIf="getSelectedCount() > 1">
+<div class="bulk-bar d-flex align-items-center gap-2 px-4 py-2 " *ngIf="getSelectedCount() > 1">
   <i class="bi bi-check2-square"></i>
   <span class="bulk-cnt">{{ getSelectedCount() }}</span>
   <span>items selected</span>
   <button class="btn-a primary sm ms-1" (click)="openBulkUpdate()">
-    <i class="bi bi-pencil-square"></i> Update All Processes
+    <i class="bi bi-pencil-square"></i> Update All Selected
   </button>
+  <button class="btn-a danger sm" (click)="deleteSelectedItems()">
+    <i class="bi bi-trash3"></i> Delete All Selected
+  </button>
+
   <button class="btn-a ghost-w sm" (click)="clearSelection()">
     <i class="bi bi-x-lg"></i> Cancel
   </button>
@@ -82,12 +107,9 @@
 
     <div class="pl-hdr d-flex align-items-center justify-content-between">
       <span class="pl-title">Items <span class="pl-badge ms-1">{{ items.length }}</span></span>
-      <input type="checkbox"
-             class="form-check-input mt-0"
-             style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"
-             [checked]="isAllSelected()"
-             (change)="toggleAllSelection($event)"
-             title="Select all">
+      <input type="checkbox" class="form-check-input mt-0"
+        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;" [checked]="isAllSelected()"
+        (change)="toggleAllSelection($event)" title="Select all">
     </div>
 
     <div class="item-scroll">
@@ -96,31 +118,25 @@
       <div class="ie-form" *ngIf="showInsertForm">
         <div class="d-flex align-items-center gap-2 mb-2">
           <div class="i-badge" *ngIf="insertItemForm.badge">{{ insertItemForm.badge }}</div>
-          <input class="ipt ipt-mono flex-grow-1"
-                 placeholder="Item Code (e.g. SF5101)"
-                 [(ngModel)]="insertItemForm.code"
-                 (ngModelChange)="onInsertItemCodeChange()"
-                 maxlength="20" />
+          <input class="ipt ipt-mono flex-grow-1" placeholder="Item Code (e.g. SF5101)"
+            [(ngModel)]="insertItemForm.code" (ngModelChange)="onInsertItemCodeChange()" maxlength="20" />
         </div>
         <div class="d-flex gap-2">
-          <button class="btn-a primary sm flex-grow-1 justify-content-center"
-                  [disabled]="!insertItemForm.code.trim()" (click)="onInsertSave()">
+          <button class="btn-a primary sm flex-grow-1 justify-content-center" [disabled]="!insertItemForm.code.trim()"
+            (click)="onInsertSave()">
             <i class="bi bi-check2"></i> Save
           </button>
-          <button class="btn-a ghost sm flex-grow-1 justify-content-center"
-                  (click)="onInsertCancel()">Cancel</button>
+          <button class="btn-a ghost sm flex-grow-1 justify-content-center" (click)="onInsertCancel()">Cancel</button>
         </div>
       </div>
 
       <!-- Item rows -->
       <ng-container *ngFor="let item of filteredItems">
 
-        <div class="item-entry"
-             [class.active]="item.expanded"
-             [class.ie-edit]="isEditing(item)"
-             (click)="toggleProcess(item)">
-          <input type="checkbox" class="ie-chk form-check-input"
-                 [(ngModel)]="item.selected" (click)="$event.stopPropagation()">
+        <div class="item-entry" [class.active]="item.expanded" [class.ie-edit]="isEditing(item)"
+          (click)="toggleProcess(item)">
+          <input type="checkbox" class="ie-chk form-check-input" [(ngModel)]="item.selected"
+            (click)="$event.stopPropagation()">
           <div class="i-badge">{{ item.badge }}</div>
           <div class="ie-info">
             <div class="ie-code">{{ item.code }}</div>
@@ -139,20 +155,17 @@
         <!-- Edit item form -->
         <div class="ie-form warn-form" *ngIf="isEditing(item)">
           <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="i-badge" style="background:var(--warn);" *ngIf="editItemForm.badge">{{ editItemForm.badge }}</div>
-            <input class="ipt ipt-mono flex-grow-1"
-                   placeholder="Item Code"
-                   [(ngModel)]="editItemForm.code"
-                   (ngModelChange)="onEditItemCodeChange()"
-                   maxlength="20" />
+            <div class="i-badge" style="background:var(--warn);" *ngIf="editItemForm.badge">{{ editItemForm.badge }}
+            </div>
+            <input class="ipt ipt-mono flex-grow-1" placeholder="Item Code" [(ngModel)]="editItemForm.code"
+              (ngModelChange)="onEditItemCodeChange()" maxlength="20" />
           </div>
           <div class="d-flex gap-2">
-            <button class="btn-a success sm flex-grow-1 justify-content-center"
-                    [disabled]="!editItemForm.code.trim()" (click)="onEditSave(item)">
+            <button class="btn-a success sm flex-grow-1 justify-content-center" [disabled]="!editItemForm.code.trim()"
+              (click)="onEditSave(item)">
               <i class="bi bi-check2"></i> Update
             </button>
-            <button class="btn-a ghost sm flex-grow-1 justify-content-center"
-                    (click)="onEditCancel()">Cancel</button>
+            <button class="btn-a ghost sm flex-grow-1 justify-content-center" (click)="onEditCancel()">Cancel</button>
           </div>
         </div>
 
@@ -198,7 +211,7 @@
         <div class="pr-hdr d-flex align-items-center justify-content-between gap-3">
           <div class="d-flex align-items-center gap-3 min-width-0">
             <div class="i-badge flex-shrink-0"
-                 style="width:38px;height:38px;font-size:15px;border-radius:9px;background:var(--accent);">
+              style="width:38px;height:38px;font-size:15px;border-radius:9px;background:var(--accent);">
               {{ item.badge }}
             </div>
             <div class="min-width-0">
@@ -207,6 +220,7 @@
             </div>
             <span class="proc-chip flex-shrink-0">{{ item.processes.length }}</span>
           </div>
+
           <button class="btn-a primary sm flex-shrink-0" (click)="openInsertProcessAtEnd(item)">
             <i class="bi bi-plus-lg"></i> Add Process
           </button>
@@ -239,7 +253,7 @@
                 </tr>
               </thead>
               <tbody>
-                <ng-container *ngFor="let process of item.processes; let i = index">
+                <ng-container *ngFor="let process of filterProcesses(item.processes); let i = index">
 
                   <!-- Data row -->
                   <tr>
@@ -247,21 +261,24 @@
                     <td><span class="code-chip">{{ process.code }}</span></td>
                     <td>
                       <span class="tp-badge" [class.tp-int]="process.type === 1" [class.tp-ext]="process.type === 2">
-                        <i class="bi" [class.bi-house-gear]="process.type === 1" [class.bi-arrow-left-right]="process.type === 2"></i>
+                        <i class="bi" [class.bi-house-gear]="process.type === 1"
+                          [class.bi-arrow-left-right]="process.type === 2"></i>
                         {{ process.type === 1 ? 'Internal' : 'External' }}
                       </span>
                     </td>
                     <td class="hide-md">
-                      <span class="sup-chip" [class.none]="!process.supplierCode">{{ process.supplierCode || '—' }}</span>
+                      <span class="sup-chip" [class.none]="!process.supplierCode">{{ process.supplierCode || '—'
+                        }}</span>
                     </td>
                     <td>
                       <div class="d-flex gap-1 justify-content-end align-items-center">
-                        <button class="ico-btn ins sm" title="Insert after" (click)="openInsertProcessBetween(item, process)">
+                        <button class="ico-btn ins sm" title="Insert after"
+                          (click)="openInsertProcessBetween(item, process)">
                           <i class="bi bi-plus"></i>
                         </button>
                         <button class="ico-btn e sm" title="Edit process"
-                                [class.active]="editingProcessSeq === process.seq && editingProcessItem === item"
-                                (click)="openEditProcess(item, process)">
+                          [class.active]="editingProcessSeq === process.seq && editingProcessItem === item"
+                          (click)="openEditProcess(item, process)">
                           <i class="bi bi-pencil"></i>
                         </button>
                         <button class="ico-btn d sm" title="Delete process" (click)="deleteProcess(item, process)">
@@ -274,20 +291,25 @@
                   <!-- Insert between form -->
                   <tr class="row-ins" *ngIf="insertingProcessItem === item && insertAfterSeq === process.seq">
                     <td><span class="seq-b ins">{{ process.seq + 1 }}</span></td>
-                    <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code"></td>
+                    <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code">
+                    </td>
                     <td>
                       <div class="tgl">
-                        <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1" (click)="insertProcessForm.type = 1">Int</button>
-                        <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2" (click)="insertProcessForm.type = 2">Ext</button>
+                        <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1"
+                          (click)="insertProcessForm.type = 1">Int</button>
+                        <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2"
+                          (click)="insertProcessForm.type = 2">Ext</button>
                       </div>
                     </td>
                     <td class="hide-md">
-                      <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier" [(ngModel)]="insertProcessForm.supplierCode">
+                      <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier"
+                        [(ngModel)]="insertProcessForm.supplierCode">
                       <span *ngIf="insertProcessForm.type === 1" class="text-muted">—</span>
                     </td>
                     <td>
                       <div class="d-flex gap-1 justify-content-end">
-                        <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()" (click)="onInsertProcessSave(item)">Save</button>
+                        <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()"
+                          (click)="onInsertProcessSave(item)">Save</button>
                         <button class="btn-a ghost xs" (click)="onInsertProcessCancel()">Cancel</button>
                       </div>
                     </td>
@@ -299,12 +321,15 @@
                     <td><input class="ipt ipt-mono" [(ngModel)]="editProcessForm.code"></td>
                     <td>
                       <div class="tgl">
-                        <button class="tgl-btn" [class.tgl-int]="editProcessForm.type === 1" (click)="editProcessForm.type = 1">Int</button>
-                        <button class="tgl-btn" [class.tgl-ext]="editProcessForm.type === 2" (click)="editProcessForm.type = 2">Ext</button>
+                        <button class="tgl-btn" [class.tgl-int]="editProcessForm.type === 1"
+                          (click)="editProcessForm.type = 1">Int</button>
+                        <button class="tgl-btn" [class.tgl-ext]="editProcessForm.type === 2"
+                          (click)="editProcessForm.type = 2">Ext</button>
                       </div>
                     </td>
                     <td class="hide-md">
-                      <input *ngIf="editProcessForm.type === 2" class="ipt" placeholder="Supplier" [(ngModel)]="editProcessForm.supplierCode">
+                      <input *ngIf="editProcessForm.type === 2" class="ipt" placeholder="Supplier"
+                        [(ngModel)]="editProcessForm.supplierCode">
                       <span *ngIf="editProcessForm.type === 1" class="text-muted">—</span>
                     </td>
                     <td>
@@ -323,17 +348,21 @@
                   <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code"></td>
                   <td>
                     <div class="tgl">
-                      <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1" (click)="insertProcessForm.type = 1">Int</button>
-                      <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2" (click)="insertProcessForm.type = 2">Ext</button>
+                      <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1"
+                        (click)="insertProcessForm.type = 1">Int</button>
+                      <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2"
+                        (click)="insertProcessForm.type = 2">Ext</button>
                     </div>
                   </td>
                   <td class="hide-md">
-                    <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier" [(ngModel)]="insertProcessForm.supplierCode">
+                    <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier"
+                      [(ngModel)]="insertProcessForm.supplierCode">
                     <span *ngIf="insertProcessForm.type === 1" class="text-muted">—</span>
                   </td>
                   <td>
                     <div class="d-flex gap-1 justify-content-end">
-                      <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()" (click)="onInsertProcessSave(item)">Save</button>
+                      <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()"
+                        (click)="onInsertProcessSave(item)">Save</button>
                       <button class="btn-a ghost xs" (click)="onInsertProcessCancel()">Cancel</button>
                     </div>
                   </td>
@@ -454,9 +483,8 @@
         <h3><i class="bi bi-collection-fill me-2" style="color:#a78bfa;"></i>Add Multiple Items</h3>
         <p>Define items and their processes below — everything saves in one click.</p>
       </div>
-      <button class="ico-btn lg"
-              style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;"
-              (click)="showBulkAddModal = false">
+      <button class="ico-btn lg" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;"
+        (click)="showBulkAddModal = false">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
@@ -468,9 +496,8 @@
       <div class="ba-error" *ngIf="bulkAddError">
         <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
         <span>{{ bulkAddError }}</span>
-        <button class="ico-btn sm ms-auto"
-                style="border:none;background:transparent;color:var(--danger);"
-                (click)="bulkAddError = ''">
+        <button class="ico-btn sm ms-auto" style="border:none;background:transparent;color:var(--danger);"
+          (click)="bulkAddError = ''">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
@@ -482,19 +509,14 @@
         <div class="draft-card-hdr">
           <div class="draft-num">{{ itemIdx + 1 }}</div>
           <div class="draft-badge" [class.empty]="!item.badge">{{ item.badge || '?' }}</div>
-          <input class="draft-code-ipt"
-                 placeholder="Item Code  (e.g. SF5101)"
-                 [(ngModel)]="item.code"
-                 (ngModelChange)="onBulkItemCodeChange(item)"
-                 maxlength="20" />
+          <input class="draft-code-ipt" placeholder="Item Code  (e.g. SF5101)" [(ngModel)]="item.code"
+            (ngModelChange)="onBulkItemCodeChange(item)" maxlength="20" />
           <span class="ms-auto small me-2" style="color:rgba(255,255,255,.45);white-space:nowrap;">
             {{ item.processes.length }} proc{{ item.processes.length !== 1 ? 's' : '' }}
           </span>
           <button class="ico-btn sm"
-                  style="background:rgba(220,38,38,.25);border-color:rgba(220,38,38,.35);color:#fca5a5;"
-                  title="Remove this item"
-                  [disabled]="bulkAddItems.length === 1"
-                  (click)="removeBulkDraftItem(item.id)">
+            style="background:rgba(220,38,38,.25);border-color:rgba(220,38,38,.35);color:#fca5a5;"
+            title="Remove this item" [disabled]="bulkAddItems.length === 1" (click)="removeBulkDraftItem(item.id)">
             <i class="bi bi-trash3"></i>
           </button>
         </div>
@@ -514,8 +536,7 @@
           <!-- Process rows -->
           <div class="proc-row" *ngFor="let proc of item.processes; let pi = index">
             <div class="proc-seq-lbl">{{ pi + 1 }}</div>
-            <input class="ipt ipt-mono" placeholder="e.g. DRILL"
-                   [(ngModel)]="proc.code" maxlength="20" />
+            <input class="ipt ipt-mono" placeholder="e.g. DRILL" [(ngModel)]="proc.code" maxlength="20" />
             <div class="tgl">
               <button class="tgl-btn" [class.tgl-int]="proc.type === 1" (click)="proc.type = 1">Int</button>
               <button class="tgl-btn" [class.tgl-ext]="proc.type === 2" (click)="proc.type = 2">Ext</button>
@@ -524,9 +545,8 @@
               <input *ngIf="proc.type === 2" class="ipt" placeholder="Supplier code" [(ngModel)]="proc.supplierCode" />
               <span *ngIf="proc.type === 1" class="text-muted small d-block text-center">—</span>
             </div>
-            <button class="ico-btn sm d" title="Remove process"
-                    [disabled]="item.processes.length === 1"
-                    (click)="removeProcessFromDraftItem(item, pi)">
+            <button class="ico-btn sm d" title="Remove process" [disabled]="item.processes.length === 1"
+              (click)="removeProcessFromDraftItem(item, pi)">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
@@ -535,7 +555,7 @@
           <div class="proc-add-row">
             <div class="proc-add-line"></div>
             <button class="btn-a ghost sm flex-shrink-0" style="font-size:11.5px;"
-                    (click)="addProcessToDraftItem(item)">
+              (click)="addProcessToDraftItem(item)">
               <i class="bi bi-plus-lg"></i> Add Process
             </button>
             <div class="proc-add-line"></div>
@@ -574,5 +594,4 @@
 
 <!-- Bootstrap JS bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmMEiDCyTJBTNGwmvVmAvhBMwSXf"
-        crossorigin="anonymous"></script>
+  integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmMEiDCyTJBTNGwmvVmAvhBMwSXf" crossorigin="anonymous"></script>
