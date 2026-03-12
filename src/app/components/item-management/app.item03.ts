@@ -23,7 +23,7 @@ interface DraftItem {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './app.item03.html',
-  // styleUrls: ['./app.item03.css'],
+  styleUrls: ['./app.item03.css'],
   encapsulation: ViewEncapsulation.None
 })
 export class ItemTableComponent implements OnInit {
