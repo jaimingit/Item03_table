@@ -11,6 +11,7 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
 
 <style>
   /* ─── Design tokens ─────────────────────────────────────────── */
@@ -34,8 +35,8 @@
     --text:      #0f172a;
     --muted:     #64748b;
     --faint:     #94a3b8;
-    --mono:      'IBM Plex Mono', monospace;
-    --sans:      'IBM Plex Sans', sans-serif;
+   --mono:        'Roboto Mono', monospace;
+  --sans:         'Roboto', sans-serif;
     --hdr-h:     56px;
     --stat-h:    58px;
   }
@@ -93,7 +94,7 @@
   .workspace { display: flex; height: calc(100vh - var(--hdr-h) - var(--stat-h)); min-height: 0; overflow: hidden; }
 
   /* ─── Left panel ────────────────────────────────────────────── */
-  .panel-left { width: 275px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-left { width: 380px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
   .pl-hdr { border-bottom: 1px solid var(--border); padding: 10px 14px; flex-shrink: 0; }
   .pl-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   .pl-badge { background: #e2e8f0; border-radius: 20px; padding: 1px 8px; font-size: 10px; font-weight: 700; color: var(--muted); }
