@@ -25,22 +25,18 @@ interface DraftItem {
 }
 
 // ── Pending change: edit | insert | delete ─────────────────────
+// ADD — add newSeq field to PendingChange interface
 interface PendingChange {
   id:            number;
   itemCode:      string;
-  changeType:    'edit' | 'insert' | 'delete';
-  /**
-   * edit   → existing process seq
-   * insert → beforeSeq: the seq of the process this new one goes BEFORE
-   *           0 means "insert at end"
-   * delete → existing process seq
-   */
+  changeType:    'edit' | 'insert' | 'delete' | 'reseq'; // MODIFY — add 'reseq'
   seq:           number;
   code:          string;
   processType:   1 | 2;
   supplierCode:  string;
   error:         string;
   supplierError: string;
+  newSeq?:       number; // ADD — for sequence change
 }
 
 @Component({
@@ -282,6 +278,92 @@ export class ItemTableComponent implements OnInit {
       p => p.itemCode === item.code && p.changeType === 'delete' && p.seq === process.seq
     );
   }
+  // ADD — inside the class, after isPendingDelete()
+
+addPendingReseq(item: Item, process: Process, newSeq: number): void {
+  // Remove existing reseq for same process if any
+  this.pendingChanges = this.pendingChanges.filter(
+    p => !(p.itemCode === item.code && p.changeType === 'reseq' && p.seq === process.seq)
+  );
+  // If newSeq same as current, do nothing
+  if (newSeq === process.seq || isNaN(newSeq)) return;
+  this.pendingChanges.push({
+    id:            this.pendingNextId++,
+    itemCode:      item.code,
+    changeType:    'reseq',
+    seq:           process.seq,
+    newSeq:        newSeq,
+    code:          process.code,
+    processType:   process.type as 1 | 2,
+    supplierCode:  process.supplierCode ?? '',
+    error:         '',
+    supplierError: ''
+  });
+}
+
+isPendingReseq(item: Item, process: Process): boolean {
+  return this.pendingChanges.some(
+    p => p.itemCode === item.code && p.changeType === 'reseq' && p.seq === process.seq
+  );
+}
+
+getPendingReseq(item: Item, process: Process): PendingChange | undefined {
+  return this.pendingChanges.find(
+    p => p.itemCode === item.code && p.changeType === 'reseq' && p.seq === process.seq
+  );
+}
+
+getReseqValue(item: Item, process: Process): number {
+  const r = this.getPendingReseq(item, process);
+  return r ? r.newSeq! : process.seq;
+}
+
+// MODIFY — replace onSeqInputChange method
+onSeqInputChange(item: Item, process: Process, value: string): void {
+  const newSeq = parseInt(value, 10);
+  const max = item.processes.length;
+
+  // ADD — clear any existing seq error first
+  const existing = this.getPendingReseq(item, process);
+  if (existing) existing.error = '';
+
+  // ADD — validate range
+  if (isNaN(newSeq) || newSeq < 1 || newSeq > max) {
+    // Remove valid reseq if exists
+    this.pendingChanges = this.pendingChanges.filter(
+      p => !(p.itemCode === item.code && p.changeType === 'reseq' && p.seq === process.seq)
+    );
+    // ADD — push an error-only reseq entry to show error in UI
+    this.pendingChanges.push({
+      id:            this.pendingNextId++,
+      itemCode:      item.code,
+      changeType:    'reseq',
+      seq:           process.seq,
+      newSeq:        undefined,
+      code:          process.code,
+      processType:   process.type as 1 | 2,
+      supplierCode:  process.supplierCode ?? '',
+      error:         `Enter a number between 1 and ${max}.`,
+      supplierError: ''
+    });
+    this.cdr.detectChanges();
+    return;
+  }
+
+  // Valid — proceed normally
+  this.addPendingReseq(item, process, newSeq);
+}
+// ADD — after onSeqInputChange
+hasSeqError(item: Item, process: Process): boolean {
+  const r = this.getPendingReseq(item, process);
+  return !!r?.error;
+}
+
+getSeqError(item: Item, process: Process): string {
+  return this.getPendingReseq(item, process)?.error ?? '';
+}
+
+
 
   // ── REMOVE / DISCARD ──
   removePending(id: number): void {
@@ -289,6 +371,8 @@ export class ItemTableComponent implements OnInit {
   }
 
   discardAllPendingGlobal(): void { this.pendingChanges = []; }
+
+
 
   // ════════════════════════════════════════
   // VALIDATE
@@ -341,6 +425,15 @@ export class ItemTableComponent implements OnInit {
   // SAVE ALL GLOBAL
   // ════════════════════════════════════════
   saveAllPendingGlobal(): void {
+    // ADD — block save if any reseq has an error
+  const hasSeqErrors = this.pendingChanges.some(
+    p => p.changeType === 'reseq' && p.error
+  );
+  if (hasSeqErrors) {
+    alert('Please fix sequence number errors before saving.');
+    return;
+  }
+
     const itemCodes = [...new Set(this.pendingChanges.map(p => p.itemCode))];
 
     let allValid = true;
@@ -369,99 +462,97 @@ export class ItemTableComponent implements OnInit {
   // it as a single PUT /processes (bulk replace). This avoids the seq-drift
   // problem that occurs when individual POSTs re-number rows between calls.
   // ════════════════════════════════════════
-  private async saveChangesForItem(item: Item, changes: PendingChange[]): Promise<void> {
-    const deleteSeqs = new Set(
-      changes.filter(c => c.changeType === 'delete').map(c => c.seq)
-    );
-    const editMap = new Map(
-      changes.filter(c => c.changeType === 'edit').map(c => [c.seq, c])
-    );
-    const inserts = changes.filter(c => c.changeType === 'insert');
+  // MODIFY — inside saveChangesForItem, update the deleteSeqs/editMap block
 
-    // Build the new ordered list in memory:
-    //  - start from the current process list (original seqs, 1-based)
-    //  - apply deletes (remove rows)
-    //  - apply edits (replace code/type/supplier in-place)
-    //  - apply inserts (splice in new rows at the correct position)
+private async saveChangesForItem(item: Item, changes: PendingChange[]): Promise<void> {
+  const deleteSeqs = new Set(
+    changes.filter(c => c.changeType === 'delete').map(c => c.seq)
+  );
+  const editMap = new Map(
+    changes.filter(c => c.changeType === 'edit').map(c => [c.seq, c])
+  );
+  const inserts = changes.filter(c => c.changeType === 'insert');
 
-    // Step 1: base list after deletes + edits
-    type Row = { code: string; type: 1 | 2; supplierCode: string | null };
+  // ADD — build reseq map: origSeq → newSeq
+ // MODIFY — update reseqMap build to skip error entries
+const reseqMap = new Map(
+  changes
+    .filter(c => c.changeType === 'reseq' && !c.error && c.newSeq !== undefined) // ADD — skip errors
+    .map(c => [c.seq, c.newSeq!])
+);
 
-    const base: { origSeq: number; row: Row }[] = item.processes
-      .filter(p => !deleteSeqs.has(p.seq))
-      .map(p => {
-        const edit = editMap.get(p.seq);
-        return {
-          origSeq: p.seq,
-          row: edit
-            ? { code: edit.code.trim().toUpperCase(), type: edit.processType,
-                supplierCode: edit.processType === 2 ? (edit.supplierCode.trim() || null) : null }
-            : { code: p.code, type: p.type as 1 | 2,
-                supplierCode: p.supplierCode ?? null }
-        };
-      });
+  type Row = { code: string; type: 1 | 2; supplierCode: string | null };
 
-    // Step 2: splice inserts.
-    //   pending.seq = beforeSeq (original seq of the process this goes BEFORE)
-    //   pending.seq = 0         → append at end
-    //
-    //   We need to insert BEFORE the entry whose origSeq === pending.seq.
-    //   Sort inserts: end-inserts (seq=0) last; others ascending by seq so
-    //   earlier inserts don't disturb the position lookups for later ones.
-    const sortedInserts = [...inserts].sort((a, b) => {
-      if (a.seq === 0) return 1;
-      if (b.seq === 0) return -1;
-      return a.seq - b.seq;
+  const base: { origSeq: number; row: Row }[] = item.processes
+    .filter(p => !deleteSeqs.has(p.seq))
+    .map(p => {
+      const edit = editMap.get(p.seq);
+      return {
+        origSeq: p.seq,
+        row: edit
+          ? { code: edit.code.trim().toUpperCase(), type: edit.processType,
+              supplierCode: edit.processType === 2 ? (edit.supplierCode.trim() || null) : null }
+          : { code: p.code, type: p.type as 1 | 2,
+              supplierCode: p.supplierCode ?? null }
+      };
     });
 
-    // We'll build the final list as an array of Row
-    // Start with base, then process each insert as a splice.
-    // Use a working array of { origSeq | -1(new), row } so position lookups
-    // on origSeq still work even as we splice in new entries.
-    const working: { origSeq: number; row: Row }[] = [...base];
+  // ADD — apply reseq: move rows to their new positions
+  let reordered = [...base];
+  reseqMap.forEach((newSeq, origSeq) => {
+    const fromIdx = reordered.findIndex(r => r.origSeq === origSeq);
+    if (fromIdx === -1) return;
+    const [moved] = reordered.splice(fromIdx, 1);
+    const toIdx = Math.min(Math.max(newSeq - 1, 0), reordered.length);
+    reordered.splice(toIdx, 0, moved);
+  });
 
-    for (const ins of sortedInserts) {
-      const newRow: Row = {
-        code:         ins.code.trim().toUpperCase(),
-        type:         ins.processType,
-        supplierCode: ins.processType === 2 ? (ins.supplierCode.trim() || null) : null
-      };
+  // rest of inserts logic stays same — MODIFY base → reordered
+  const sortedInserts = [...inserts].sort((a, b) => {
+    if (a.seq === 0) return 1;
+    if (b.seq === 0) return -1;
+    return a.seq - b.seq;
+  });
 
-      if (ins.seq === 0) {
-        // append at end
-        working.push({ origSeq: -1, row: newRow });
+  const working: { origSeq: number; row: Row }[] = [...reordered]; // MODIFY was [...base]
+
+  for (const ins of sortedInserts) {
+    const newRow: Row = {
+      code:         ins.code.trim().toUpperCase(),
+      type:         ins.processType,
+      supplierCode: ins.processType === 2 ? (ins.supplierCode.trim() || null) : null
+    };
+    if (ins.seq === 0) {
+      working.push({ origSeq: -1, row: newRow });
+    } else {
+      const idx = working.findIndex(w => w.origSeq === ins.seq);
+      if (idx !== -1) {
+        working.splice(idx, 0, { origSeq: -1, row: newRow });
       } else {
-        // find the entry with origSeq === ins.seq and insert before it
-        const idx = working.findIndex(w => w.origSeq === ins.seq);
-        if (idx !== -1) {
-          working.splice(idx, 0, { origSeq: -1, row: newRow });
-        } else {
-          // origSeq not found (e.g. that row was deleted) — append
-          working.push({ origSeq: -1, row: newRow });
-        }
+        working.push({ origSeq: -1, row: newRow });
       }
     }
-
-    // Step 3: send final list as a single atomic PUT /processes
-    const payload = working.map(w => ({
-      code:         w.row.code,
-      type:         w.row.type,
-      supplierCode: w.row.supplierCode
-    }));
-
-    const updated = await this.http.put<any>(
-      `${this.apiUrl}/${item.code}/processes`, payload
-    ).toPromise();
-
-    if (updated) {
-      item.processes = (updated.processes ?? updated.Processes ?? []).map((p: any) => ({
-        seq:          p.seq          ?? p.Seq,
-        code:         p.code         ?? p.Code,
-        type:         p.type         ?? p.Type,
-        supplierCode: p.supplierCode ?? p.SupplierCode ?? null
-      }));
-    }
   }
+
+  const payload = working.map(w => ({
+    code:         w.row.code,
+    type:         w.row.type,
+    supplierCode: w.row.supplierCode
+  }));
+
+  const updated = await this.http.put<any>(
+    `${this.apiUrl}/${item.code}/processes`, payload
+  ).toPromise();
+
+  if (updated) {
+    item.processes = (updated.processes ?? updated.Processes ?? []).map((p: any) => ({
+      seq:          p.seq          ?? p.Seq,
+      code:         p.code         ?? p.Code,
+      type:         p.type         ?? p.Type,
+      supplierCode: p.supplierCode ?? p.SupplierCode ?? null
+    }));
+  }
+}
 
   // ════════════════════════════════════════
   // LOAD ITEM01 OPTIONS (for insert dropdown)
