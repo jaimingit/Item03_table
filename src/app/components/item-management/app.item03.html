@@ -1,138 +1,152 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
   integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap"
-  rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
 
-<!-- ══════════════════════════════════════════════════════════════
-     HEADER
-     ══════════════════════════════════════════════════════════════ -->
+<!-- HEADER -->
 <header class="app-header d-flex align-items-center px-4 gap-3">
-
   <div class="d-flex align-items-center gap-2 flex-shrink-0">
     <div class="brand-icon text-white"><i class="bi bi-gear-wide-connected"></i></div>
-    <span class="brand-label fw-bold text-white" style="font-size:14.5px;letter-spacing:.02em;">
-      Item Process Management
-    </span>
+    <span class="brand-label fw-bold text-white" style="font-size:14.5px;letter-spacing:.02em;">Item Process Management</span>
   </div>
-
   <div class="hdr-search flex-grow-1" style="max-width:300px;margin:0 auto;">
     <i class="bi bi-search"></i>
     <input type="text" placeholder="Search items or processes…" [(ngModel)]="searchTerm" />
   </div>
-
   <div class="d-flex gap-2 flex-shrink-0">
     <button class="btn-a bulk-add-btn" (click)="openBulkAddModal()">
       <i class="bi bi-collection-fill"></i><span>Add Item</span>
     </button>
-    <button class="btn-a danger" (click)="deleteAllItems() ">
+    <button class="btn-a danger" (click)="deleteAllItems()">
       <i class="bi bi-trash3"></i><span>Delete All</span>
     </button>
   </div>
 </header>
 
-<!-- ══════════════════════════════════════════════════════════════
-     STAT STRIP
-     ══════════════════════════════════════════════════════════════ -->
-<div class="stat-strip d-flex align-items-center px-4" style="height:var(--stat-h) ">
+<!-- STAT STRIP -->
+<div class="stat-strip d-flex align-items-center px-4" style="height:var(--stat-h)">
   <div class="stat-cell">
     <div class="stat-ico ico-blue"><i class="bi bi-layers"></i></div>
-    <div>
-      <div class="stat-lbl">Total Items</div>
-      <div class="stat-val">{{ items.length }}</div>
-    </div>
+    <div><div class="stat-lbl">Total Items</div><div class="stat-val">{{ items.length }}</div></div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-slate"><i class="bi bi-diagram-3"></i></div>
-    <div>
-      <div class="stat-lbl">Processes</div>
-      <div class="stat-val">{{ processCount }}</div>
-    </div>
+    <div><div class="stat-lbl">Processes</div><div class="stat-val">{{ processCount }}</div></div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-amber"><i class="bi bi-building"></i></div>
-    <div>
-      <div class="stat-lbl">Suppliers</div>
-      <div class="stat-val">{{ supplierCount }}</div>
-    </div>
+    <div><div class="stat-lbl">Suppliers</div><div class="stat-val">{{ supplierCount }}</div></div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-green"><i class="bi bi-house-gear"></i></div>
-    <div>
-      <div class="stat-lbl">Internal</div>
-      <div class="stat-val">{{ internalProcessCount }}</div>
-    </div>
+    <div><div class="stat-lbl">Internal</div><div class="stat-val">{{ internalProcessCount }}</div></div>
   </div>
   <div class="stat-cell">
     <div class="stat-ico ico-red"><i class="bi bi-arrow-left-right"></i></div>
-    <div>
-      <div class="stat-lbl">External</div>
-      <div class="stat-val">{{ externalProcessCount }}</div>
-    </div>
+    <div><div class="stat-lbl">External</div><div class="stat-val">{{ externalProcessCount }}</div></div>
   </div>
-  <div class="process-filter flex-shrink-0">
 
+  <div class="process-filter flex-shrink-0 ms-3">
     <select class="process-select" [(ngModel)]="filterProcessType">
       <option value="all">All Processes</option>
       <option value="internal">Internal Processes</option>
       <option value="external">External Processes</option>
     </select>
   </div>
+
+  <!-- SAVE ALL CORNER -->
+  <div class="save-all-corner ms-auto flex-shrink-0 d-flex align-items-center gap-2 pe-1" *ngIf="totalPendingCount > 0">
+    <span class="pending-summary">
+      <span class="pending-dot"></span>{{ totalPendingCount }} pending
+    </span>
+    <button class="btn-a primary sm" (click)="saveAllPendingGlobal()">
+      <i class="bi bi-check2-all"></i> Save All
+    </button>
+    <button class="ico-btn sm" title="Discard all" (click)="discardAllPendingGlobal()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
 </div>
 
-<!-- Bulk selection toolbar -->
-<div class="bulk-bar d-flex align-items-center gap-2 px-4 py-2 " *ngIf="getSelectedCount() > 1">
+<!-- BULK BAR -->
+<div class="bulk-bar d-flex align-items-center gap-2 px-4 py-2" *ngIf="getSelectedCount() > 0">
   <i class="bi bi-check2-square"></i>
   <span class="bulk-cnt">{{ getSelectedCount() }}</span>
   <span>items selected</span>
-  <button class="btn-a primary sm ms-1" (click)="openBulkUpdate()">
-    <i class="bi bi-pencil-square"></i> Update All Selected
-  </button>
   <button class="btn-a danger sm" (click)="deleteSelectedItems()">
     <i class="bi bi-trash3"></i> Delete All Selected
   </button>
-
   <button class="btn-a ghost-w sm" (click)="clearSelection()">
     <i class="bi bi-x-lg"></i> Cancel
   </button>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     WORKSPACE
-     ══════════════════════════════════════════════════════════════ -->
+<!-- WORKSPACE -->
 <div class="workspace">
 
-  <!-- ── LEFT PANEL ─────────────────────────────────────────── -->
+  <!-- LEFT PANEL -->
   <aside class="panel-left">
-
     <div class="pl-hdr d-flex align-items-center justify-content-between">
       <span class="pl-title">Items <span class="pl-badge ms-1">{{ items.length }}</span></span>
       <input type="checkbox" class="form-check-input mt-0"
-        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;" [checked]="isAllSelected()"
-        (change)="toggleAllSelection($event)" title="Select all">
+        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"
+        [checked]="isAllSelected()" (change)="toggleAllSelection($event)" title="Select all">
     </div>
-
     <div class="item-scroll">
 
-      <!-- New item form -->
+      <!-- ── INLINE INSERT FORM (dropdown from ITEM01) ── -->
       <div class="ie-form" *ngIf="showInsertForm">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="i-badge" *ngIf="insertItemForm.badge">{{ insertItemForm.badge }}</div>
-          <input class="ipt ipt-mono flex-grow-1" placeholder="Item Code (e.g. SF5101)"
-            [(ngModel)]="insertItemForm.code" (ngModelChange)="onInsertItemCodeChange()" maxlength="20" />
+
+        <!-- loading state -->
+        <div *ngIf="item01Loading" class="d-flex align-items-center gap-2 py-1 text-muted" style="font-size:12px;">
+          <div class="aim-spinner" style="border-color:rgba(37,99,235,.25);border-top-color:var(--accent);"></div>
+          Loading items…
         </div>
+
+        <!-- load error -->
+        <div *ngIf="item01Error && !item01Loading" class="field-error mb-2">
+          <i class="bi bi-exclamation-circle-fill"></i> {{ item01Error }}
+        </div>
+
+        <!-- dropdown + badge row -->
+        <div *ngIf="!item01Loading" class="d-flex align-items-center gap-2 mb-2">
+          <!-- badge updates as user picks -->
+          <div class="i-badge flex-shrink-0"
+            [style.background]="insertBadge ? 'var(--accent)' : 'var(--border-md)'"
+            [style.color]="insertBadge ? '#fff' : 'var(--faint)'">
+            {{ insertBadge || '?' }}
+          </div>
+
+          <select class="ipt ipt-sel-dd flex-grow-1"
+            [(ngModel)]="insertSelectedCode"
+            (ngModelChange)="insertError = ''">
+            <option value="" disabled selected>— Select item —</option>
+            <option *ngFor="let opt of item01Options"
+              [value]="opt.code"
+              [disabled]="isItemAlreadyAdded(opt.code)">
+              {{ opt.code }}{{ opt.name ? ' · ' + opt.name : '' }}{{ isItemAlreadyAdded(opt.code) ? ' ✓' : '' }}
+            </option>
+          </select>
+        </div>
+
+        <!-- inline error -->
+        <div class="field-error mb-2" *ngIf="insertError">
+          <i class="bi bi-exclamation-circle-fill"></i> {{ insertError }}
+        </div>
+
+        <!-- action buttons -->
         <div class="d-flex gap-2">
-          <button class="btn-a primary sm flex-grow-1 justify-content-center" [disabled]="!insertItemForm.code.trim()"
+          <button class="btn-a primary sm flex-grow-1 justify-content-center"
+            [disabled]="!insertSelectedCode || item01Loading"
             (click)="onInsertSave()">
             <i class="bi bi-check2"></i> Save
           </button>
-          <button class="btn-a ghost sm flex-grow-1 justify-content-center" (click)="onInsertCancel()">Cancel</button>
+          <button class="btn-a ghost sm flex-grow-1 justify-content-center"
+            (click)="onInsertCancel()">Cancel</button>
         </div>
       </div>
 
-      <!-- Item rows -->
       <ng-container *ngFor="let item of filteredItems">
-
         <div class="item-entry" [class.active]="item.expanded" [class.ie-edit]="isEditing(item)"
           (click)="toggleProcess(item)">
           <input type="checkbox" class="ie-chk form-check-input" [(ngModel)]="item.selected"
@@ -140,51 +154,42 @@
           <div class="i-badge">{{ item.badge }}</div>
           <div class="ie-info">
             <div class="ie-code">{{ item.code }}</div>
-            <div class="ie-sub">{{ item.processes.length }} process{{ item.processes.length !== 1 ? 'es' : '' }}</div>
+            <div class="ie-sub">
+              {{ item.processes.length }} process{{ item.processes.length !== 1 ? 'es' : '' }}
+              <span *ngIf="getPendingCountForItem(item) > 0" class="item-pending-badge">
+                {{ getPendingCountForItem(item) }} pending
+              </span>
+            </div>
           </div>
           <div class="ie-actions" (click)="$event.stopPropagation()">
-            <button class="ico-btn e sm" title="Edit item" (click)="openEditForm(item)">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="ico-btn d sm" title="Delete item" (click)="deleteItem(item)">
-              <i class="bi bi-trash3"></i>
-            </button>
+            <button class="ico-btn d sm" (click)="deleteItem(item)"><i class="bi bi-trash3"></i></button>
           </div>
         </div>
 
-        <!-- Edit item form -->
-        <div class="ie-form warn-form" *ngIf="isEditing(item)">
+        <div class="ie-form warn-form" *ngIf="editingItemCode === item.code">
           <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="i-badge" style="background:var(--warn);" *ngIf="editItemForm.badge">{{ editItemForm.badge }}
-            </div>
-            <input class="ipt ipt-mono flex-grow-1" placeholder="Item Code" [(ngModel)]="editItemForm.code"
-              (ngModelChange)="onEditItemCodeChange()" maxlength="20" />
+            <div class="i-badge" style="background:var(--warn);" *ngIf="editItemForm.badge">{{ editItemForm.badge }}</div>
+            <input class="ipt ipt-mono flex-grow-1" placeholder="Item Code"
+              [(ngModel)]="editItemForm.code" (ngModelChange)="onEditItemCodeChange()" maxlength="20" />
           </div>
           <div class="d-flex gap-2">
-            <button class="btn-a success sm flex-grow-1 justify-content-center" [disabled]="!editItemForm.code.trim()"
-              (click)="onEditSave(item)">
+            <button class="btn-a success sm flex-grow-1 justify-content-center"
+              [disabled]="!editItemForm.code.trim()" (click)="onEditSave(item)">
               <i class="bi bi-check2"></i> Update
             </button>
             <button class="btn-a ghost sm flex-grow-1 justify-content-center" (click)="onEditCancel()">Cancel</button>
           </div>
         </div>
-
       </ng-container>
 
-      <!-- Loading -->
       <div *ngIf="isLoading" class="empty-st py-4">
-        <div class="spin"></div>
-        <p class="text-muted small">Loading items…</p>
+        <div class="spin"></div><p class="text-muted small">Loading items…</p>
       </div>
-
-      <!-- Error -->
       <div *ngIf="errorMessage && !isLoading" class="empty-st py-4">
         <div class="eico" style="color:var(--danger);"><i class="bi bi-exclamation-triangle"></i></div>
         <p class="small" style="color:var(--danger);">{{ errorMessage }}</p>
       </div>
-
-    </div><!-- /item-scroll -->
-
+    </div>
     <div class="pl-footer">
       <button class="btn-a ghost w-100 justify-content-center" (click)="openInsertForm()">
         <i class="bi bi-plus-lg"></i> Add New Item
@@ -192,10 +197,8 @@
     </div>
   </aside>
 
-  <!-- ── RIGHT PANEL ────────────────────────────────────────── -->
+  <!-- RIGHT PANEL -->
   <section class="panel-right">
-
-    <!-- Nothing selected -->
     <ng-container *ngIf="!filteredItems || !filteredItems.some(i => i.expanded)">
       <div class="empty-st mt-5">
         <div class="eico"><i class="bi bi-arrow-left-circle"></i></div>
@@ -204,10 +207,8 @@
       </div>
     </ng-container>
 
-    <!-- Active item detail -->
     <ng-container *ngFor="let item of filteredItems">
       <ng-container *ngIf="item.expanded">
-
         <div class="pr-hdr d-flex align-items-center justify-content-between gap-3">
           <div class="d-flex align-items-center gap-3 min-width-0">
             <div class="i-badge flex-shrink-0"
@@ -220,378 +221,280 @@
             </div>
             <span class="proc-chip flex-shrink-0">{{ item.processes.length }}</span>
           </div>
-
-          <button class="btn-a primary sm flex-shrink-0" (click)="openInsertProcessAtEnd(item)">
+          <button class="btn-a primary sm flex-shrink-0" (click)="addPendingInsert(item, null)">
             <i class="bi bi-plus-lg"></i> Add Process
           </button>
         </div>
 
         <div class="pr-body">
-
-          <div *ngIf="item.processes.length === 0 && insertingProcessItem !== item" class="empty-st">
+          <div *ngIf="item.processes.length === 0 && getPendingCountForItem(item) === 0" class="empty-st">
             <div class="eico"><i class="bi bi-diagram-3"></i></div>
-            <h3>No Processes Yet</h3>
-            <p>Click "Add Process" to add the first step.</p>
+            <h3>No Processes Yet</h3><p>Click "Add Process" to add the first step.</p>
           </div>
 
-          <div class="proc-wrap" *ngIf="item.processes.length > 0 || insertingProcessItem === item">
+          <div class="proc-wrap" *ngIf="item.processes.length > 0 || getPendingCountForItem(item) > 0">
             <table class="proc-tbl">
               <colgroup>
-                <col class="c-seq" />
-                <col class="c-code" />
-                <col class="c-type" />
-                <col class="c-sup hide-md" />
-                <col class="c-act" />
+                <col class="c-seq" /><col class="c-code" />
+                <col class="c-type" /><col class="c-sup hide-md" /><col class="c-act" />
               </colgroup>
               <thead>
                 <tr>
-                  <th>Seq</th>
-                  <th>Process Code</th>
-                  <th>Type</th>
-                  <th class="hide-md">Supplier</th>
-                  <th class="text-end">Actions</th>
+                  <th>Seq</th><th>Process Code</th><th>Type</th>
+                  <th class="hide-md">Supplier</th><th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <ng-container *ngFor="let process of filterProcesses(item.processes); let i = index">
+                <ng-container *ngFor="let process of filterProcesses(item.processes)">
 
-                  <!-- Data row -->
-                  <tr>
+                  <!-- INSERT BEFORE this process -->
+                  <ng-container *ngFor="let ins of getPendingInsertsBefore(item, process.seq)">
+                    <tr class="row-ins">
+                      <td><span class="seq-b ins"><i class="bi bi-arrow-bar-up" style="font-size:10px;"></i></span></td>
+                      <td>
+                        <input class="ipt ipt-mono" placeholder="New Process Code"
+                          [class.ipt-error]="ins.error" [(ngModel)]="ins.code" (ngModelChange)="ins.error=''">
+                        <div class="field-error" *ngIf="ins.error">
+                          <i class="bi bi-exclamation-circle-fill"></i> {{ ins.error }}
+                        </div>
+                      </td>
+                      <td>
+                        <div class="tgl">
+                          <button class="tgl-btn" [class.tgl-int]="ins.processType===1" (click)="ins.processType=1">Int</button>
+                          <button class="tgl-btn" [class.tgl-ext]="ins.processType===2" (click)="ins.processType=2">Ext</button>
+                        </div>
+                      </td>
+                      <td class="hide-md">
+                        <input *ngIf="ins.processType===2" class="ipt" placeholder="Supplier"
+                          [class.ipt-error]="ins.supplierError" [(ngModel)]="ins.supplierCode" (ngModelChange)="ins.supplierError=''">
+                        <div class="field-error" *ngIf="ins.processType===2 && ins.supplierError">
+                          <i class="bi bi-exclamation-circle-fill"></i> {{ ins.supplierError }}
+                        </div>
+                        <span *ngIf="ins.processType===1" class="text-muted">—</span>
+                      </td>
+                      <td>
+                        <div class="d-flex gap-1 justify-content-end align-items-center">
+                          <button class="btn-a ghost xs" (click)="removePending(ins.id)">Cancel</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-container>
+
+                  <!-- DATA ROW -->
+                  <tr [class.row-has-pending-edit]="isPendingEdit(item, process)"
+                      [class.row-has-pending-delete]="isPendingDelete(item, process)">
                     <td><span class="seq-b">{{ process.seq }}</span></td>
-                    <td><span class="code-chip">{{ process.code }}</span></td>
                     <td>
-                      <span class="tp-badge" [class.tp-int]="process.type === 1" [class.tp-ext]="process.type === 2">
-                        <i class="bi" [class.bi-house-gear]="process.type === 1"
-                          [class.bi-arrow-left-right]="process.type === 2"></i>
+                      <span class="code-chip" [class.text-strike]="isPendingDelete(item, process)">
+                        {{ process.code }}
+                      </span>
+                      <span *ngIf="isPendingDelete(item, process)" class="delete-badge ms-2">
+                        <i class="bi bi-trash3"></i> delete pending
+                      </span>
+                    </td>
+                    <td>
+                      <span class="tp-badge" [class.tp-int]="process.type===1" [class.tp-ext]="process.type===2"
+                        [class.op-50]="isPendingDelete(item, process)">
+                        <i class="bi" [class.bi-house-gear]="process.type===1" [class.bi-arrow-left-right]="process.type===2"></i>
                         {{ process.type === 1 ? 'Internal' : 'External' }}
                       </span>
                     </td>
                     <td class="hide-md">
-                      <span class="sup-chip" [class.none]="!process.supplierCode">{{ process.supplierCode || '—'
-                        }}</span>
+                      <span class="sup-chip" [class.none]="!process.supplierCode" [class.op-50]="isPendingDelete(item, process)">
+                        {{ process.supplierCode || '—' }}
+                      </span>
                     </td>
                     <td>
                       <div class="d-flex gap-1 justify-content-end align-items-center">
-                        <button class="ico-btn ins sm" title="Insert after"
-                          (click)="openInsertProcessBetween(item, process)">
+                        <button class="ico-btn ins sm" title="Insert before this process"
+                          [disabled]="isPendingDelete(item, process)"
+                          (click)="addPendingInsert(item, process.seq)">
                           <i class="bi bi-plus"></i>
                         </button>
                         <button class="ico-btn e sm" title="Edit process"
-                          [class.active]="editingProcessSeq === process.seq && editingProcessItem === item"
-                          (click)="openEditProcess(item, process)">
+                          [class.active]="isPendingEdit(item, process)"
+                          [disabled]="isPendingDelete(item, process)"
+                          (click)="addPendingEdit(item, process)">
                           <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="ico-btn d sm" title="Delete process" (click)="deleteProcess(item, process)">
-                          <i class="bi bi-trash3"></i>
+                        <button class="ico-btn sm"
+                          [class.d]="!isPendingDelete(item, process)"
+                          [class.d-undo]="isPendingDelete(item, process)"
+                          [title]="isPendingDelete(item,process) ? 'Undo delete' : 'Queue delete'"
+                          (click)="togglePendingDelete(item, process)">
+                          <i class="bi" [class.bi-trash3]="!isPendingDelete(item,process)"
+                            [class.bi-arrow-counterclockwise]="isPendingDelete(item,process)"></i>
                         </button>
                       </div>
                     </td>
                   </tr>
 
-                  <!-- Insert between form -->
-                  <tr class="row-ins" *ngIf="insertingProcessItem === item && insertAfterSeq === process.seq">
-                    <td><span class="seq-b ins">{{ process.seq + 1 }}</span></td>
-                    <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code">
-                    </td>
-                    <td>
-                      <div class="tgl">
-                        <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1"
-                          (click)="insertProcessForm.type = 1">Int</button>
-                        <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2"
-                          (click)="insertProcessForm.type = 2">Ext</button>
-                      </div>
-                    </td>
-                    <td class="hide-md">
-                      <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier"
-                        [(ngModel)]="insertProcessForm.supplierCode">
-                      <span *ngIf="insertProcessForm.type === 1" class="text-muted">—</span>
-                    </td>
-                    <td>
-                      <div class="d-flex gap-1 justify-content-end">
-                        <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()"
-                          (click)="onInsertProcessSave(item)">Save</button>
-                        <button class="btn-a ghost xs" (click)="onInsertProcessCancel()">Cancel</button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <!-- Edit form -->
-                  <tr class="row-edt" *ngIf="editingProcessItem === item && editingProcessSeq === process.seq">
+                  <!-- EDIT FORM ROW -->
+                  <tr class="row-edt" *ngIf="isPendingEdit(item, process)">
                     <td><span class="seq-b edt">{{ process.seq }}</span></td>
-                    <td><input class="ipt ipt-mono" [(ngModel)]="editProcessForm.code"></td>
+                    <td>
+                      <input class="ipt ipt-mono"
+                        [class.ipt-error]="getPendingEdit(item, process)!.error"
+                        [(ngModel)]="getPendingEdit(item, process)!.code"
+                        (ngModelChange)="clearPendingError(item, process)" placeholder="Process Code">
+                      <div class="field-error" *ngIf="getPendingEdit(item, process)!.error">
+                        <i class="bi bi-exclamation-circle-fill"></i> {{ getPendingEdit(item, process)!.error }}
+                      </div>
+                    </td>
                     <td>
                       <div class="tgl">
-                        <button class="tgl-btn" [class.tgl-int]="editProcessForm.type === 1"
-                          (click)="editProcessForm.type = 1">Int</button>
-                        <button class="tgl-btn" [class.tgl-ext]="editProcessForm.type === 2"
-                          (click)="editProcessForm.type = 2">Ext</button>
+                        <button class="tgl-btn" [class.tgl-int]="getPendingEdit(item,process)!.processType===1"
+                          (click)="getPendingEdit(item,process)!.processType=1">Int</button>
+                        <button class="tgl-btn" [class.tgl-ext]="getPendingEdit(item,process)!.processType===2"
+                          (click)="getPendingEdit(item,process)!.processType=2">Ext</button>
                       </div>
                     </td>
                     <td class="hide-md">
-                      <input *ngIf="editProcessForm.type === 2" class="ipt" placeholder="Supplier"
-                        [(ngModel)]="editProcessForm.supplierCode">
-                      <span *ngIf="editProcessForm.type === 1" class="text-muted">—</span>
+                      <input *ngIf="getPendingEdit(item,process)!.processType===2" class="ipt" placeholder="Supplier"
+                        [class.ipt-error]="getPendingEdit(item,process)!.supplierError"
+                        [(ngModel)]="getPendingEdit(item,process)!.supplierCode"
+                        (ngModelChange)="clearPendingSupplierError(item,process)">
+                      <div class="field-error" *ngIf="getPendingEdit(item,process)!.processType===2 && getPendingEdit(item,process)!.supplierError">
+                        <i class="bi bi-exclamation-circle-fill"></i> {{ getPendingEdit(item,process)!.supplierError }}
+                      </div>
+                      <span *ngIf="getPendingEdit(item,process)!.processType===1" class="text-muted">—</span>
                     </td>
                     <td>
                       <div class="d-flex gap-1 justify-content-end">
-                        <button class="btn-a success xs" (click)="onEditProcessSave(item, process)">Update</button>
-                        <button class="btn-a ghost xs" (click)="editingProcessSeq = null">Cancel</button>
+                        <button class="btn-a ghost xs" (click)="removePending(getPendingEdit(item,process)!.id)">Cancel</button>
                       </div>
                     </td>
                   </tr>
 
                 </ng-container>
 
-                <!-- Add at end form -->
-                <tr class="row-ins" *ngIf="insertingProcessItem === item && insertAfterSeq === null">
-                  <td><span class="seq-b ins">{{ item.processes.length + 1 }}</span></td>
-                  <td><input class="ipt ipt-mono" placeholder="Process Code" [(ngModel)]="insertProcessForm.code"></td>
-                  <td>
-                    <div class="tgl">
-                      <button class="tgl-btn" [class.tgl-int]="insertProcessForm.type === 1"
-                        (click)="insertProcessForm.type = 1">Int</button>
-                      <button class="tgl-btn" [class.tgl-ext]="insertProcessForm.type === 2"
-                        (click)="insertProcessForm.type = 2">Ext</button>
-                    </div>
-                  </td>
-                  <td class="hide-md">
-                    <input *ngIf="insertProcessForm.type === 2" class="ipt" placeholder="Supplier"
-                      [(ngModel)]="insertProcessForm.supplierCode">
-                    <span *ngIf="insertProcessForm.type === 1" class="text-muted">—</span>
-                  </td>
-                  <td>
-                    <div class="d-flex gap-1 justify-content-end">
-                      <button class="btn-a primary xs" [disabled]="!insertProcessForm.code.trim()"
-                        (click)="onInsertProcessSave(item)">Save</button>
-                      <button class="btn-a ghost xs" (click)="onInsertProcessCancel()">Cancel</button>
-                    </div>
-                  </td>
-                </tr>
+                <!-- INSERT AT END -->
+                <ng-container *ngFor="let ins of getPendingInsertsBefore(item, null)">
+                  <tr class="row-ins row-ins-end">
+                    <td><span class="seq-b ins"><i class="bi bi-plus-circle" style="font-size:10px;"></i></span></td>
+                    <td>
+                      <input class="ipt ipt-mono" placeholder="New Process Code"
+                        [class.ipt-error]="ins.error" [(ngModel)]="ins.code" (ngModelChange)="ins.error=''">
+                      <div class="field-error" *ngIf="ins.error">
+                        <i class="bi bi-exclamation-circle-fill"></i> {{ ins.error }}
+                      </div>
+                    </td>
+                    <td>
+                      <div class="tgl">
+                        <button class="tgl-btn" [class.tgl-int]="ins.processType===1" (click)="ins.processType=1">Int</button>
+                        <button class="tgl-btn" [class.tgl-ext]="ins.processType===2" (click)="ins.processType=2">Ext</button>
+                      </div>
+                    </td>
+                    <td class="hide-md">
+                      <input *ngIf="ins.processType===2" class="ipt" placeholder="Supplier"
+                        [class.ipt-error]="ins.supplierError" [(ngModel)]="ins.supplierCode" (ngModelChange)="ins.supplierError=''">
+                      <div class="field-error" *ngIf="ins.processType===2 && ins.supplierError">
+                        <i class="bi bi-exclamation-circle-fill"></i> {{ ins.supplierError }}
+                      </div>
+                      <span *ngIf="ins.processType===1" class="text-muted">—</span>
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1 justify-content-end align-items-center">
+                        
+                        <button class="btn-a ghost xs" (click)="removePending(ins.id)">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
 
               </tbody>
             </table>
-          </div><!-- /proc-wrap -->
-
-        </div><!-- /pr-body -->
+          </div>
+        </div>
       </ng-container>
     </ng-container>
-
   </section>
-</div><!-- /workspace -->
-
-
-<!-- ══════════════════════════════════════════════════════════════
-     BULK UPDATE MODAL  (existing — process editing for selected items)
-     ══════════════════════════════════════════════════════════════ -->
-<div class="modal-back" *ngIf="showBulkUpdateModal">
-  <div class="modal-box">
-
-    <div class="modal-hd d-flex justify-content-between align-items-start">
-      <div>
-        <h3>Multi-Item Bulk Editor</h3>
-        <p>Editing <strong>{{ bulkEditItems.length }}</strong> selected items — changes apply on Save</p>
-      </div>
-      <button class="ico-btn lg" (click)="showBulkUpdateModal = false">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>
-
-    <div class="modal-bd">
-      <div class="bulk-card" *ngFor="let item of bulkEditItems; let itemIdx = index">
-
-        <div class="bulk-card-hd d-flex align-items-center gap-2">
-          <div class="i-badge" style="background:var(--accent);">{{ item.badge }}</div>
-          <input type="text" [(ngModel)]="item.code" class="ipt ipt-mono fw-bold" style="max-width:220px;">
-          <span class="text-muted small ms-1">Item {{ itemIdx + 1 }}</span>
-        </div>
-
-        <table class="proc-tbl" style="table-layout:auto;">
-          <thead>
-            <tr>
-              <th style="width:50px;">Seq</th>
-              <th>Code</th>
-              <th style="width:150px;">Type</th>
-              <th>Supplier</th>
-              <th style="width:80px;" class="text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let p of item.processes; let procIdx = index">
-              <td><span class="seq-b">{{ p.seq }}</span></td>
-              <td><input type="text" [(ngModel)]="p.code" class="ipt ipt-mono" placeholder="e.g. DRILL"></td>
-              <td>
-                <select [(ngModel)]="p.type" class="ipt-sel">
-                  <option [ngValue]="1">Internal</option>
-                  <option [ngValue]="2">External</option>
-                </select>
-              </td>
-              <td>
-                <input *ngIf="p.type === 2" type="text" [(ngModel)]="p.supplierCode" class="ipt" placeholder="Supplier">
-                <span *ngIf="p.type === 1" class="text-muted d-block text-center">—</span>
-              </td>
-              <td>
-                <div class="d-flex gap-1 justify-content-center">
-                  <button class="ico-btn ins sm" title="Insert below" (click)="insertProcessInBulkItem(item, procIdx)">
-                    <i class="bi bi-plus"></i>
-                  </button>
-                  <button class="ico-btn d sm" (click)="removeProcessFromBulkItem(item, procIdx)">
-                    <i class="bi bi-x"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="p-2" style="background:var(--bg);">
-          <button class="btn-a ghost sm" (click)="addProcessToBulkItem(item)">
-            <i class="bi bi-plus-lg"></i> Add step to {{ item.code }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal-ft d-flex justify-content-end gap-2">
-      <button class="btn-a ghost" (click)="showBulkUpdateModal = false">
-        <i class="bi bi-x-lg"></i> Cancel
-      </button>
-      <button class="btn-a primary" (click)="applyBulkProcessUpdate()">
-        <i class="bi bi-check2-all"></i> Save All Changes
-      </button>
-    </div>
-  </div>
 </div>
 
-
-<!-- ══════════════════════════════════════════════════════════════
-     BULK ADD MODAL  (new — create multiple items + processes at once)
-     ══════════════════════════════════════════════════════════════ -->
+<!-- BULK ADD MODAL -->
 <div class="modal-back" *ngIf="showBulkAddModal">
   <div class="ba-modal-box">
-
-    <!-- Saving overlay -->
     <div class="ba-saving" *ngIf="bulkAddSaving">
-      <div class="text-center">
-        <div class="spin mx-auto mb-2"></div>
-        <p class="fw-bold text-muted small mb-0">Saving items…</p>
-      </div>
+      <div class="text-center"><div class="spin mx-auto mb-2"></div><p class="fw-bold text-muted small mb-0">Saving items…</p></div>
     </div>
-
-    <!-- Header -->
     <div class="ba-hdr d-flex align-items-start justify-content-between gap-3">
       <div>
         <h3><i class="bi bi-collection-fill me-2" style="color:#a78bfa;"></i>Add Multiple Items</h3>
         <p>Define items and their processes below — everything saves in one click.</p>
       </div>
       <button class="ico-btn lg" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;"
-        (click)="showBulkAddModal = false">
-        <i class="bi bi-x-lg"></i>
-      </button>
+        (click)="showBulkAddModal=false"><i class="bi bi-x-lg"></i></button>
     </div>
-
-    <!-- Body -->
     <div class="ba-body">
-
-      <!-- Validation error -->
       <div class="ba-error" *ngIf="bulkAddError">
-        <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-        <span>{{ bulkAddError }}</span>
-        <button class="ico-btn sm ms-auto" style="border:none;background:transparent;color:var(--danger);"
-          (click)="bulkAddError = ''">
-          <i class="bi bi-x-lg"></i>
-        </button>
+        <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i><span>{{ bulkAddError }}</span>
+        <button class="ico-btn sm ms-auto" style="border:none;background:transparent;color:var(--danger);" (click)="bulkAddError=''"><i class="bi bi-x-lg"></i></button>
       </div>
-
-      <!-- Draft item cards -->
-      <div class="draft-card" *ngFor="let item of bulkAddItems; let itemIdx = index">
-
-        <!-- Card header -->
+      <div class="draft-card" *ngFor="let item of bulkAddItems; let itemIdx=index">
         <div class="draft-card-hdr">
-          <div class="draft-num">{{ itemIdx + 1 }}</div>
-          <div class="draft-badge" [class.empty]="!item.badge">{{ item.badge || '?' }}</div>
-          <input class="draft-code-ipt" placeholder="Item Code  (e.g. SF5101)" [(ngModel)]="item.code"
-            (ngModelChange)="onBulkItemCodeChange(item)" maxlength="20" />
+          <div class="draft-num">{{ itemIdx+1 }}</div>
+          <div class="draft-badge" [class.empty]="!item.badge">{{ item.badge||'?' }}</div>
+          <select class="ipt ipt-sel-dd flex-grow-1"
+            [(ngModel)]="item.code"
+            (ngModelChange)="insertError = ''">
+            <option value="" disabled selected>— Select item —</option>
+            <option *ngFor="let opt of item01Options"
+              [value]="opt.code"
+              [disabled]="isItemAlreadyAdded(opt.code)">
+              {{ opt.code }}{{ opt.name ? ' · ' + opt.name : '' }}{{ isItemAlreadyAdded(opt.code) ? ' ✓' : '' }}
+            </option>
+          </select>
           <span class="ms-auto small me-2" style="color:rgba(255,255,255,.45);white-space:nowrap;">
-            {{ item.processes.length }} proc{{ item.processes.length !== 1 ? 's' : '' }}
+            {{ item.processes.length }} proc{{ item.processes.length!==1?'s':'' }}
           </span>
-          <button class="ico-btn sm"
-            style="background:rgba(220,38,38,.25);border-color:rgba(220,38,38,.35);color:#fca5a5;"
-            title="Remove this item" [disabled]="bulkAddItems.length === 1" (click)="removeBulkDraftItem(item.id)">
-            <i class="bi bi-trash3"></i>
-          </button>
+          <button class="ico-btn sm" style="background:rgba(220,38,38,.25);border-color:rgba(220,38,38,.35);color:#fca5a5;"
+            [disabled]="bulkAddItems.length===1" (click)="removeBulkDraftItem(item.id)"><i class="bi bi-trash3"></i></button>
         </div>
-
-        <!-- Processes -->
         <div class="draft-proc-body">
-
-          <!-- Column labels -->
           <div class="proc-col-lbl">
-            <div></div>
-            <div class="stat-lbl">Process Code</div>
-            <div class="stat-lbl">Type</div>
-            <div class="stat-lbl">Supplier</div>
-            <div></div>
+            <div></div><div class="stat-lbl">Process Code</div>
+            <div class="stat-lbl">Type</div><div class="stat-lbl">Supplier</div><div></div>
           </div>
-
-          <!-- Process rows -->
-          <div class="proc-row" *ngFor="let proc of item.processes; let pi = index">
-            <div class="proc-seq-lbl">{{ pi + 1 }}</div>
+          <div class="proc-row" *ngFor="let proc of item.processes; let pi=index">
+            <div class="proc-seq-lbl">{{ pi+1 }}</div>
             <input class="ipt ipt-mono" placeholder="e.g. DRILL" [(ngModel)]="proc.code" maxlength="20" />
             <div class="tgl">
-              <button class="tgl-btn" [class.tgl-int]="proc.type === 1" (click)="proc.type = 1">Int</button>
-              <button class="tgl-btn" [class.tgl-ext]="proc.type === 2" (click)="proc.type = 2">Ext</button>
+              <button class="tgl-btn" [class.tgl-int]="proc.type===1" (click)="proc.type=1">Int</button>
+              <button class="tgl-btn" [class.tgl-ext]="proc.type===2" (click)="proc.type=2">Ext</button>
             </div>
             <div>
-              <input *ngIf="proc.type === 2" class="ipt" placeholder="Supplier code" [(ngModel)]="proc.supplierCode" />
-              <span *ngIf="proc.type === 1" class="text-muted small d-block text-center">—</span>
+              <input *ngIf="proc.type===2" class="ipt" placeholder="Supplier code" [(ngModel)]="proc.supplierCode" />
+              <span *ngIf="proc.type===1" class="text-muted small d-block text-center">—</span>
             </div>
-            <button class="ico-btn sm d" title="Remove process" [disabled]="item.processes.length === 1"
-              (click)="removeProcessFromDraftItem(item, pi)">
+            <button class="ico-btn sm d" [disabled]="item.processes.length===1" (click)="removeProcessFromDraftItem(item,pi)">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
-
-          <!-- Add process -->
           <div class="proc-add-row">
             <div class="proc-add-line"></div>
-            <button class="btn-a ghost sm flex-shrink-0" style="font-size:11.5px;"
-              (click)="addProcessToDraftItem(item)">
+            <button class="btn-a ghost sm flex-shrink-0" style="font-size:11.5px;" (click)="addProcessToDraftItem(item)">
               <i class="bi bi-plus-lg"></i> Add Process
             </button>
             <div class="proc-add-line"></div>
           </div>
-
         </div>
-      </div><!-- /draft-card -->
-
-      <!-- Add another item -->
-      <div class="add-item-row" (click)="addBulkDraftItem()">
-        <i class="bi bi-plus-circle me-2"></i>Add Another Item
       </div>
-
-    </div><!-- /ba-body -->
-
-    <!-- Footer -->
+      <div class="add-item-row" (click)="addBulkDraftItem()"><i class="bi bi-plus-circle me-2"></i>Add Another Item</div>
+    </div>
     <div class="ba-ft d-flex align-items-center justify-content-between gap-3">
       <span class="text-muted small">
         <i class="bi bi-info-circle me-1"></i>
-        <strong class="text-dark">{{ bulkAddItems.length }}</strong>
-        item{{ bulkAddItems.length !== 1 ? 's' : '' }} ready to save
+        <strong class="text-dark">{{ bulkAddItems.length }}</strong> item{{ bulkAddItems.length!==1?'s':'' }} ready to save
       </span>
       <div class="d-flex gap-2">
-        <button class="btn-a ghost" (click)="showBulkAddModal = false">
-          <i class="bi bi-x-lg"></i> Cancel
-        </button>
+        <button class="btn-a ghost" (click)="showBulkAddModal=false"><i class="bi bi-x-lg"></i> Cancel</button>
         <button class="btn-a bulk-add-btn" [disabled]="bulkAddSaving" (click)="submitBulkAdd()">
-          <i class="bi bi-check2-all"></i>
-          Save {{ bulkAddItems.length }} Item{{ bulkAddItems.length !== 1 ? 's' : '' }}
+          <i class="bi bi-check2-all"></i> Save {{ bulkAddItems.length }} Item{{ bulkAddItems.length!==1?'s':'' }}
         </button>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- Bootstrap JS bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
   integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmMEiDCyTJBTNGwmvVmAvhBMwSXf" crossorigin="anonymous"></script>

@@ -2,20 +2,45 @@ import { Component, OnInit, ViewEncapsulation, ChangeDetectorRef } from '@angula
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Item, Process } from '../../models/item02.model';
+import { Item, Process } from '../../models/item03.model';
+import { environment } from '../../../environment/environment.prod';
 
-// ── Bulk-add draft interfaces (outside class, at file level) ──
+// Shape of items coming from ITEM01 lookup table
+interface Item01Option {
+  code: string;
+  name: string;   // description / display name from ITEM01
+}
+
+// ── Bulk-add draft interfaces ──────────────────────────────────
 interface DraftProcess {
   code:         string;
   type:         1 | 2;
   supplierCode: string;
 }
-
 interface DraftItem {
-  id:        number;   // local tracking only — never sent to backend
+  id:        number;
   code:      string;
   badge:     string;
   processes: DraftProcess[];
+}
+
+// ── Pending change: edit | insert | delete ─────────────────────
+interface PendingChange {
+  id:            number;
+  itemCode:      string;
+  changeType:    'edit' | 'insert' | 'delete';
+  /**
+   * edit   → existing process seq
+   * insert → beforeSeq: the seq of the process this new one goes BEFORE
+   *           0 means "insert at end"
+   * delete → existing process seq
+   */
+  seq:           number;
+  code:          string;
+  processType:   1 | 2;
+  supplierCode:  string;
+  error:         string;
+  supplierError: string;
 }
 
 @Component({
@@ -28,65 +53,57 @@ interface DraftItem {
 })
 export class ItemTableComponent implements OnInit {
 
-  private apiUrl = 'http://localhost:5254/api/Item';
+  // private apiUrl = 'http://192.168.80.80//myapi/api/Item';
+    private readonly apiUrl = `${environment.apiUrl}/Item`;
+  
 
-  // ── Search ──
-  searchTerm: string = '';
-  insertAfterSeq: number | null = null;
-  insertingProcess: Item | null = null;
+  searchTerm   = ''; 
+  isLoading    = false; 
+  errorMessage = '';
 
-  // ── Loading & Error ──
-  isLoading: boolean = false;
-  errorMessage: string = '';
+  // ── Inline insert form (left panel) ──
+  showInsertForm     = false;
+  insertSelectedCode = '';        // bound to the ITEM01 dropdown
+  item01Options:  Item01Option[] = [];
+  item01Loading   = false;
+  item01Error     = '';
+  insertError     = '';
 
-  // ── Item insert form state ──
-  showInsertForm: boolean = false;
-  insertItemForm = { code: '', badge: '' };
-
-  // ── Item edit form state ──
   editingItemCode: string | null = null;
   editItemForm = { code: '', badge: '' };
 
-  // ── Process insert form state ──
-  insertingProcessItem: Item | null = null;
-  insertProcessForm1 = { code: '', type: 1, supplierCode: '' };
-  insertProcessForm  = { code: '', type: 1, supplierCode: '' };
+  filterProcessType: 'all' | 'internal' | 'external' = 'all';
 
-  // ── Process edit form state ──
-  editingProcessSeq: number | null = null;
-  editingProcessItem: Item | null = null;
-  editProcessForm = { code: '', type: 1, supplierCode: '' };
+  // bulk add modal
+  showBulkAddModal = false;
+  bulkAddItems: DraftItem[] = [];
+  bulkAddNextId    = 1;
+  bulkAddSaving    = false;
+  bulkAddError     = '';
 
-  // ── Bulk update state (existing) ──
-  showBulkUpdateModal: boolean = false;
+  // kept for potential future use
+  showBulkUpdateModal = false;
   bulkEditItems: any[] = [];
 
-  // ── Bulk ADD state (new) ──
-  showBulkAddModal  = false;
-  bulkAddItems: DraftItem[] = [];
-  bulkAddNextId     = 1;
-  bulkAddSaving     = false;
-  bulkAddError      = '';
+  // pending queue
+  pendingChanges: PendingChange[] = [];
+  pendingNextId = 1;
 
-  // ── Data ──
   items: (Item & { selected?: boolean })[] = [];
 
-  constructor(
-    private http: HttpClient,
-    private cdr: ChangeDetectorRef
-  ) { }
+  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadItems();
+    this.loadItem01Options();
   }
 
-  // ── Map backend response to frontend model ──
   private mapItem(item: any): Item & { selected: boolean } {
     return {
-      code: item.code ?? item.Code,
-      badge: item.badge ?? item.Badge ?? (item.code ?? item.Code).charAt(0),
-      expanded: false,
-      selected: false,
+      code:      item.code      ?? item.Code,
+      badge:     item.badge     ?? item.Badge ?? (item.code ?? item.Code).charAt(0),
+      expanded:  false,
+      selected:  false,
       processes: (item.processes ?? item.Processes ?? []).map((p: any) => ({
         seq:          p.seq          ?? p.Seq,
         code:         p.code         ?? p.Code,
@@ -97,89 +114,60 @@ export class ItemTableComponent implements OnInit {
   }
 
   // ════════════════════════════════════════
-  // LOAD — GET /api/Item
+  // LOAD
   // ════════════════════════════════════════
   loadItems(): void {
-    this.isLoading    = true;
+    this.isLoading = true;
     this.errorMessage = '';
-
     this.http.get<any[]>(this.apiUrl).subscribe({
       next: (data) => {
-        setTimeout(() => {
-          this.items     = data.map(i => this.mapItem(i));
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        }, 2000);
+        this.items = data.map(i => this.mapItem(i));
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.errorMessage = 'Failed to load items.';
-        this.isLoading    = false;
+        this.isLoading = false;
         this.cdr.detectChanges();
         console.error(err);
       }
     });
   }
 
-  // ── Search filter ──
-get filteredItems(): (Item & { selected?: boolean })[] {
-  const term = this.searchTerm.trim().toLowerCase();
-  if (!term) return this.items;
-
-  const searchTerms = term
-    .split(',')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
-
-  // Filter items based on whether ANY process (or item code) matches
-  return this.items.filter(item =>
-    searchTerms.some(t =>
-      item.code.toLowerCase().includes(t) ||
-      item.processes.some(p => p.code.toLowerCase().includes(t)) ||
-      item.processes.some(p => p.supplierCode?.toLowerCase().includes(t)) ||
-      item.processes.some(p => (p.type === 1 ? 'internal' : 'external').includes(t))
-    )
-  );
-} // this is use for the search functionality in the html template. 
-  // It filters the items based on the search term entered by the user. 
-  // The search term can be a comma-separated list of terms, and the filter checks if any of those terms are included in the item code or any of its process codes.
-
-  // ════════════════════════════════════════
-  // process type filter model
-  // ════════════════════════════════════════
-// Selected process type filter
-filterProcessType: 'all' | 'internal' | 'external' = 'all';
-
-// Filtered processes inside an item based on search term AND process type
-filterProcesses(processes: Process[]): Process[] {
-  const term = this.searchTerm?.trim().toLowerCase();
-  let filtered = [...processes];
-
-  // Filter by process type from dropdown
-  if (this.filterProcessType === 'internal') {
-    filtered = filtered.filter(p => p.type === 1);
-  } else if (this.filterProcessType === 'external') {
-    filtered = filtered.filter(p => p.type === 2);
-  }
-
-  // Filter by search term (code, supplierCode, type)
-  if (term) {
-    const searchTerms = term.split(',').map(s => s.trim()).filter(s => s.length > 0);
-    filtered = filtered.filter(p =>
-      searchTerms.some(t =>
-        p.code.toLowerCase().includes(t) ||
-        (p.supplierCode?.toLowerCase().includes(t)) ||
-        (p.type === 1 ? 'internal' : 'external').includes(t)
+  // ── Filters ──
+  get filteredItems(): (Item & { selected?: boolean })[] {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) return this.items;
+    const terms = term.split(',').map(s => s.trim()).filter(Boolean);
+    return this.items.filter(item =>
+      terms.some(t =>
+        item.code.toLowerCase().includes(t) ||
+        item.processes.some(p => p.code.toLowerCase().includes(t)) ||
+        item.processes.some(p => p.supplierCode?.toLowerCase().includes(t)) ||
+        item.processes.some(p => (p.type === 1 ? 'internal' : 'external').includes(t))
       )
     );
   }
 
-  return filtered;
-}
+  filterProcesses(processes: Process[]): Process[] {
+    const term = this.searchTerm?.trim().toLowerCase();
+    let filtered = [...processes];
+    if (this.filterProcessType === 'internal')  filtered = filtered.filter(p => p.type === 1);
+    if (this.filterProcessType === 'external')  filtered = filtered.filter(p => p.type === 2);
+    if (term) {
+      const terms = term.split(',').map(s => s.trim()).filter(Boolean);
+      filtered = filtered.filter(p =>
+        terms.some(t =>
+          p.code.toLowerCase().includes(t) ||
+          p.supplierCode?.toLowerCase().includes(t) ||
+          (p.type === 1 ? 'internal' : 'external').includes(t)
+        )
+      );
+    }
+    return filtered;
+  }
 
-
-  // ════════════════════════════════════════
-  // SUMMARY COUNTS
-  // ════════════════════════════════════════
+  // ── Counts ──
   get totalCount():           number { return this.items.length; }
   get processCount():         number { return this.items.reduce((s, i) => s + i.processes.length, 0); }
   get supplierCount():        number { return new Set(this.items.flatMap(i => i.processes.map(p => p.supplierCode))).size; }
@@ -187,543 +175,481 @@ filterProcesses(processes: Process[]): Process[] {
   get externalProcessCount(): number { return this.items.reduce((s, i) => s + i.processes.filter(p => p.type === 2).length, 0); }
 
   // ════════════════════════════════════════
-  // PROCESS REORDERING
+  // PENDING — core
   // ════════════════════════════════════════
-  // moveProcessUp(item: any, index: number): void {
-  //   if (index === 0) return;
-  //   this.saveReorder(item, index, index - 1);
-  // }
 
-  // moveProcessDown(item: any, index: number): void {
-  //   if (index === item.processes.length - 1) return;
-  //   this.saveReorder(item, index, index + 1);
-  // }
+  get totalPendingCount(): number { return this.pendingChanges.length; }
 
-  // saveReorder(item: any, fromIndex: number, toIndex: number): void {
-  //   const temp = item.processes[fromIndex];
-  //   item.processes[fromIndex] = item.processes[toIndex];
-  //   item.processes[toIndex]   = temp;
-  //   item.processes.forEach((p: any, i: number) => p.seq = i + 1);
-  //   this.cdr.detectChanges();
+  getPendingCountForItem(item: Item): number {
+    return this.pendingChanges.filter(p => p.itemCode === item.code).length;
+  }
 
-  //   this.http.put<Item>(
-  //     `${this.apiUrl}/${item.code}/processes/reorder?from=${fromIndex}&to=${toIndex}`,
-  //     {},
-  //     { headers: { 'Content-Type': 'application/json' } }
-  //   ).subscribe({
-  //     next: (updated: Item) => {
-  //       item.processes = updated.processes.map((p: Process) => ({
-  //         seq:          p.seq,
-  //         code:         p.code,
-  //         type:         p.type,
-  //         supplierCode: p.supplierCode ?? null
-  //       }));
-  //       this.cdr.detectChanges();
-  //     },
-  //     error: (err) => {
-  //       alert('Failed to reorder.');
-  //       console.error(err);
-  //       this.loadItems();
-  //     }
-  //   });
-  // }
+  // ── EDIT ──
+  addPendingEdit(item: Item, process: Process): void {
+    const exists = this.pendingChanges.find(
+      p => p.itemCode === item.code && p.changeType === 'edit' && p.seq === process.seq
+    );
+    if (exists) { this.removePending(exists.id); return; }
+    this.pendingChanges.push({
+      id:            this.pendingNextId++,
+      itemCode:      item.code,
+      changeType:    'edit',
+      seq:           process.seq,
+      code:          process.code,
+      processType:   process.type as 1 | 2,
+      supplierCode:  process.supplierCode ?? '',
+      error:         '',
+      supplierError: ''
+    });
+  }
+
+  isPendingEdit(item: Item, process: Process): boolean {
+    return this.pendingChanges.some(
+      p => p.itemCode === item.code && p.changeType === 'edit' && p.seq === process.seq
+    );
+  }
+
+  getPendingEdit(item: Item, process: Process): PendingChange | undefined {
+    return this.pendingChanges.find(
+      p => p.itemCode === item.code && p.changeType === 'edit' && p.seq === process.seq
+    );
+  }
+
+  clearPendingError(item: Item, process: Process): void {
+    const p = this.getPendingEdit(item, process); if (p) p.error = '';
+  }
+  clearPendingSupplierError(item: Item, process: Process): void {
+    const p = this.getPendingEdit(item, process); if (p) p.supplierError = '';
+  }
+
+  // ── INSERT (before a seq, or at end when seq = null → stored as 0) ──
+  /**
+   * seq = process.seq  → new row appears BEFORE that process (process shifts down)
+   * seq = null         → new row appears at end
+   */
+  addPendingInsert(item: Item, beforeSeq: number | null): void {
+    this.pendingChanges.push({
+      id:            this.pendingNextId++,
+      itemCode:      item.code,
+      changeType:    'insert',
+      seq:           beforeSeq ?? 0,
+      code:          '',
+      processType:   1,
+      supplierCode:  '',
+      error:         '',
+      supplierError: ''
+    });
+  }
+
+  /** Returns insert-pending rows whose beforeSeq matches */
+  getPendingInsertsBefore(item: Item, beforeSeq: number | null): PendingChange[] {
+    const target = beforeSeq ?? 0;
+    return this.pendingChanges.filter(
+      p => p.itemCode === item.code && p.changeType === 'insert' && p.seq === target
+    );
+  }
+
+  // ── DELETE ──
+  togglePendingDelete(item: Item, process: Process): void {
+    const exists = this.pendingChanges.find(
+      p => p.itemCode === item.code && p.changeType === 'delete' && p.seq === process.seq
+    );
+    if (exists) {
+      this.removePending(exists.id);
+    } else {
+      // Also remove any pending edit for this process
+      const editPending = this.pendingChanges.find(
+        p => p.itemCode === item.code && p.changeType === 'edit' && p.seq === process.seq
+      );
+      if (editPending) this.removePending(editPending.id);
+
+      this.pendingChanges.push({
+        id:            this.pendingNextId++,
+        itemCode:      item.code,
+        changeType:    'delete',
+        seq:           process.seq,
+        code:          process.code,
+        processType:   process.type as 1 | 2,
+        supplierCode:  '',
+        error:         '',
+        supplierError: ''
+      });
+    }
+  }
+
+  isPendingDelete(item: Item, process: Process): boolean {
+    return this.pendingChanges.some(
+      p => p.itemCode === item.code && p.changeType === 'delete' && p.seq === process.seq
+    );
+  }
+
+  // ── REMOVE / DISCARD ──
+  removePending(id: number): void {
+    this.pendingChanges = this.pendingChanges.filter(p => p.id !== id);
+  }
+
+  discardAllPendingGlobal(): void { this.pendingChanges = []; }
+
+  // ════════════════════════════════════════
+  // VALIDATE
+  // ════════════════════════════════════════
+  private validatePending(changes: PendingChange[], item: Item): boolean {
+    let valid = true;
+
+    const editSeqs   = changes.filter(c => c.changeType === 'edit').map(c => c.seq);
+    const deleteSeqs = changes.filter(c => c.changeType === 'delete').map(c => c.seq);
+
+    const existingCodes = item.processes
+      .filter(p => !editSeqs.includes(p.seq) && !deleteSeqs.includes(p.seq))
+      .map(p => p.code.toUpperCase());
+
+    const pendingCodes: string[] = [];
+
+    for (const c of changes) {
+      c.error = ''; c.supplierError = '';
+
+      if (c.changeType === 'delete') continue; // delete rows need no validation
+
+      if (!c.code.trim()) {
+        c.error = 'Process code is required.';
+        valid = false; continue;
+      }
+
+      const upper = c.code.trim().toUpperCase();
+
+      if (pendingCodes.includes(upper)) {
+        c.error = `Duplicate code "${upper}" in pending list.`;
+        valid = false;
+      }
+
+      if (c.changeType === 'insert' && existingCodes.includes(upper)) {
+        c.error = `Process "${upper}" already exists.`;
+        valid = false;
+      }
+
+      pendingCodes.push(upper);
+
+      if (c.processType === 2 && !c.supplierCode.trim()) {
+        c.supplierError = 'Supplier code required for External.';
+        valid = false;
+      }
+    }
+    return valid;
+  }
+
+  // ════════════════════════════════════════
+  // SAVE ALL GLOBAL
+  // ════════════════════════════════════════
+  saveAllPendingGlobal(): void {
+    const itemCodes = [...new Set(this.pendingChanges.map(p => p.itemCode))];
+
+    let allValid = true;
+    for (const code of itemCodes) {
+      const item    = this.items.find(i => i.code === code);
+      const changes = this.pendingChanges.filter(p => p.itemCode === code);
+      if (item && !this.validatePending(changes, item)) allValid = false;
+    }
+    if (!allValid) { this.cdr.detectChanges(); return; }
+
+    const savePromises = itemCodes.map(code => {
+      const item    = this.items.find(i => i.code === code)!;
+      const changes = this.pendingChanges.filter(p => p.itemCode === code);
+      return this.saveChangesForItem(item, changes);
+    });
+
+    Promise.all(savePromises)
+      .then(() => { this.pendingChanges = []; this.loadItems(); })
+      .catch(err => { alert('One or more saves failed.'); console.error(err); this.cdr.detectChanges(); });
+  }
+
+  // ════════════════════════════════════════
+  // EXECUTE SAVES FOR ONE ITEM — atomic rewrite
+  //
+  // Strategy: compute the full desired process list in memory, then send
+  // it as a single PUT /processes (bulk replace). This avoids the seq-drift
+  // problem that occurs when individual POSTs re-number rows between calls.
+  // ════════════════════════════════════════
+  private async saveChangesForItem(item: Item, changes: PendingChange[]): Promise<void> {
+    const deleteSeqs = new Set(
+      changes.filter(c => c.changeType === 'delete').map(c => c.seq)
+    );
+    const editMap = new Map(
+      changes.filter(c => c.changeType === 'edit').map(c => [c.seq, c])
+    );
+    const inserts = changes.filter(c => c.changeType === 'insert');
+
+    // Build the new ordered list in memory:
+    //  - start from the current process list (original seqs, 1-based)
+    //  - apply deletes (remove rows)
+    //  - apply edits (replace code/type/supplier in-place)
+    //  - apply inserts (splice in new rows at the correct position)
+
+    // Step 1: base list after deletes + edits
+    type Row = { code: string; type: 1 | 2; supplierCode: string | null };
+
+    const base: { origSeq: number; row: Row }[] = item.processes
+      .filter(p => !deleteSeqs.has(p.seq))
+      .map(p => {
+        const edit = editMap.get(p.seq);
+        return {
+          origSeq: p.seq,
+          row: edit
+            ? { code: edit.code.trim().toUpperCase(), type: edit.processType,
+                supplierCode: edit.processType === 2 ? (edit.supplierCode.trim() || null) : null }
+            : { code: p.code, type: p.type as 1 | 2,
+                supplierCode: p.supplierCode ?? null }
+        };
+      });
+
+    // Step 2: splice inserts.
+    //   pending.seq = beforeSeq (original seq of the process this goes BEFORE)
+    //   pending.seq = 0         → append at end
+    //
+    //   We need to insert BEFORE the entry whose origSeq === pending.seq.
+    //   Sort inserts: end-inserts (seq=0) last; others ascending by seq so
+    //   earlier inserts don't disturb the position lookups for later ones.
+    const sortedInserts = [...inserts].sort((a, b) => {
+      if (a.seq === 0) return 1;
+      if (b.seq === 0) return -1;
+      return a.seq - b.seq;
+    });
+
+    // We'll build the final list as an array of Row
+    // Start with base, then process each insert as a splice.
+    // Use a working array of { origSeq | -1(new), row } so position lookups
+    // on origSeq still work even as we splice in new entries.
+    const working: { origSeq: number; row: Row }[] = [...base];
+
+    for (const ins of sortedInserts) {
+      const newRow: Row = {
+        code:         ins.code.trim().toUpperCase(),
+        type:         ins.processType,
+        supplierCode: ins.processType === 2 ? (ins.supplierCode.trim() || null) : null
+      };
+
+      if (ins.seq === 0) {
+        // append at end
+        working.push({ origSeq: -1, row: newRow });
+      } else {
+        // find the entry with origSeq === ins.seq and insert before it
+        const idx = working.findIndex(w => w.origSeq === ins.seq);
+        if (idx !== -1) {
+          working.splice(idx, 0, { origSeq: -1, row: newRow });
+        } else {
+          // origSeq not found (e.g. that row was deleted) — append
+          working.push({ origSeq: -1, row: newRow });
+        }
+      }
+    }
+
+    // Step 3: send final list as a single atomic PUT /processes
+    const payload = working.map(w => ({
+      code:         w.row.code,
+      type:         w.row.type,
+      supplierCode: w.row.supplierCode
+    }));
+
+    const updated = await this.http.put<any>(
+      `${this.apiUrl}/${item.code}/processes`, payload
+    ).toPromise();
+
+    if (updated) {
+      item.processes = (updated.processes ?? updated.Processes ?? []).map((p: any) => ({
+        seq:          p.seq          ?? p.Seq,
+        code:         p.code         ?? p.Code,
+        type:         p.type         ?? p.Type,
+        supplierCode: p.supplierCode ?? p.SupplierCode ?? null
+      }));
+    }
+  }
+
+  // ════════════════════════════════════════
+  // LOAD ITEM01 OPTIONS (for insert dropdown)
+  // ════════════════════════════════════════
+    private loadItem01Options(): void {
+    this.item01Loading = true;
+    this.item01Error   = '';
+    this.http.get<any[]>(`${this.apiUrl}/item01list?lookup=true`).subscribe({
+      next: (data) => {
+        console.log('ITEM01 options loaded:', data);
+        this.item01Options = data.map(d => ({
+          code: (d.code ?? d.Code ?? '').toString().trim().toUpperCase(),
+          name: (d.name ?? d.Name ?? '').toString().trim()
+        })).filter(o => o.code);
+        this.item01Loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.item01Error = `Could not load items (HTTP ${err.status}).`;
+        this.item01Loading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Badge letter for the currently selected code */
+  get insertBadge(): string {
+    return this.insertSelectedCode ? this.insertSelectedCode.charAt(0).toUpperCase() : '';
+  }
+
+  /** True if code already exists in the working list */
+  isItemAlreadyAdded(code: string): boolean {
+    return this.items.some(i => i.code.toUpperCase() === code.toUpperCase());
+  }
 
   // ════════════════════════════════════════
   // SELECTION
   // ════════════════════════════════════════
   getSelectedCount(): number  { return this.items.filter(i => i.selected).length; }
-  isAllSelected():    boolean { return this.items.length > 0 && this.items.every(i => i.selected); } 
-
-  toggleAllSelection(event: any): void {
-    this.filteredItems.forEach(i => i.selected = event.target.checked);
-  }
-
+  isAllSelected():    boolean { return this.items.length > 0 && this.items.every(i => i.selected); }
+  toggleAllSelection(event: any): void { this.filteredItems.forEach(i => i.selected = event.target.checked); }
   clearSelection(): void { this.items.forEach(i => i.selected = false); }
 
   toggleProcess(item: any): void {
-    const isAlreadyOpen = item.expanded;
+    const open = item.expanded;
     this.items.forEach(i => i.expanded = false);
-    if (!isAlreadyOpen) item.expanded = true;
-    this.insertingProcessItem = null;
-    this.insertAfterSeq       = null;
-    this.editingProcessItem   = null;
-    this.editingProcessSeq    = null;
+    if (!open) item.expanded = true;
   }
 
   // ════════════════════════════════════════
-  // ITEM INSERT — POST /api/Item
+  // ITEM INSERT (inline form with dropdown)
   // ════════════════════════════════════════
   openInsertForm(): void {
-    this.editingItemCode = null;
-    this.insertItemForm  = { code: '', badge: '' };
-    this.showInsertForm  = true;
-  }
-
-  onInsertItemCodeChange(): void {
-    this.insertItemForm.badge = this.insertItemForm.code
-      ? this.insertItemForm.code.charAt(0).toUpperCase() : '';
+    this.editingItemCode   = null;
+    this.insertSelectedCode = '';
+    this.insertError        = '';
+    this.showInsertForm     = true;
   }
 
   onInsertSave(): void {
-    const code = this.insertItemForm.code.trim().toUpperCase();
-    if (!code) return;
+    const code = this.insertSelectedCode.trim().toUpperCase();
+    if (!code) { this.insertError = 'Please select an item.'; return; }
     if (this.items.some(i => i.code.toUpperCase() === code)) {
-      alert(`Item "${code}" already exists.`);
+      this.insertError = `Item "${code}" already exists.`;
       return;
     }
-    if (!confirm(`Create new item "${code}"?`)) return;
-  
-    const payload = { code, badge: code.charAt(0), expanded: false, processes: [] };
-
-    this.http.post<any>(this.apiUrl, payload).subscribe({
-      next: (created) => {
-        this.items.unshift(this.mapItem(created));
-        this.showInsertForm = false;
-        this.insertItemForm = { code: '', badge: '' };
-        this.cdr.detectChanges();
+    this.http.post<any>(this.apiUrl, { code, badge: code.charAt(0), expanded: false, processes: [] }).subscribe({
+      next: () => {
+        this.showInsertForm     = false;
+        this.insertSelectedCode = '';
+        this.insertError        = '';
+        this.loadItems();
       },
       error: (err) => {
-        alert(err.status === 409
+        this.insertError = err.status === 409
           ? `Item "${code}" already exists.`
-          : 'Failed to create item.');
-        console.error(err);
+          : (err.error?.message ?? 'Failed to create item.');
+        this.cdr.detectChanges();
       }
     });
   }
 
   onInsertCancel(): void {
-    this.showInsertForm = false;
-    this.insertItemForm = { code: '', badge: '' };
+    this.showInsertForm     = false;
+    this.insertSelectedCode = '';
+    this.insertError        = '';
   }
 
   // ════════════════════════════════════════
-  // ITEM EDIT — PUT /api/Item/{code}
+  // ITEM EDIT
   // ════════════════════════════════════════
   openEditForm(item: Item): void {
-    this.showInsertForm = false;
-    if (this.editingItemCode === item.code) {
-      this.editingItemCode = null;
-    } else {
-      this.editingItemCode = item.code;
-      this.editItemForm    = { code: item.code, badge: item.badge };
-    }
+    this.showInsertForm     = false;
+    this.insertSelectedCode = '';
+    this.insertError        = '';
+    if (this.editingItemCode === item.code) { this.editingItemCode = null; }
+    else { this.editingItemCode = item.code; this.editItemForm = { code: item.code, badge: item.badge }; }
   }
-
   isEditing(item: Item): boolean { return this.editingItemCode === item.code; }
-
   onEditItemCodeChange(): void {
-    this.editItemForm.badge = this.editItemForm.code
-      ? this.editItemForm.code.charAt(0).toUpperCase() : '';
+    this.editItemForm.badge = this.editItemForm.code ? this.editItemForm.code.charAt(0).toUpperCase() : '';
   }
-
   onEditSave(item: Item): void {
     const code = this.editItemForm.code.trim().toUpperCase();
     if (!code) return;
-    if (code !== item.code && this.items.some(i => i.code.toUpperCase() === code)) {
-      alert(`Item "${code}" already exists.`);
-      return;
-    }
-    if (code !== item.code && !confirm(`Change item code from "${item.code}" to "${code}"? This will also update all associated processes.`)) {
-      return;
-    }
-
-
+    if (code !== item.code && this.items.some(i => i.code.toUpperCase() === code)) { alert(`Item "${code}" already exists.`); return; }
+    if (code !== item.code && !confirm(`Change item code from "${item.code}" to "${code}"?`)) return;
     this.http.put<any>(`${this.apiUrl}/${item.code}`, { code, badge: code.charAt(0) }).subscribe({
-      next: (updated) => {
-        item.code  = updated.code  ?? updated.Code;
-        item.badge = updated.badge ?? updated.Badge;
+      next: () => {
+        this.pendingChanges = this.pendingChanges.filter(p => p.itemCode !== item.code);
         this.editingItemCode = null;
-        this.cdr.detectChanges();
+        this.loadItems();
       },
-      error: (err) => {
-        alert(err.status === 409
-          ? `Item "${code}" already exists.`
-          : 'Failed to update item.');
-        console.error(err);
-      }
+      error: (err) => { alert(err.status === 409 ? `Item "${code}" already exists.` : 'Failed to update item.'); }
     });
   }
-
   onEditCancel(): void { this.editingItemCode = null; }
 
   // ════════════════════════════════════════
-  // ITEM DELETE — DELETE /api/Item/{code}
+  // ITEM DELETE
   // ════════════════════════════════════════
   deleteItem(item: Item): void {
     if (!confirm(`Delete item "${item.code}" and all its processes?`)) return;
-
     this.http.delete(`${this.apiUrl}/${item.code}`).subscribe({
       next: () => {
-        this.items = this.items.filter(i => i !== item);
+        this.pendingChanges = this.pendingChanges.filter(p => p.itemCode !== item.code);
         if (this.editingItemCode === item.code) this.editingItemCode = null;
-        this.cdr.detectChanges();
+        this.loadItems();
       },
-      error: (err) => { alert('Failed to delete item.'); console.error(err); }
+      error: () => alert('Failed to delete item.')
     });
   }
 
-  // DELETE ALL — DELETE /api/Item
   deleteAllItems(): void {
     if (!confirm('Delete ALL items?')) return;
-
     this.http.delete(this.apiUrl).subscribe({
       next: () => {
-        this.items                = [];
-        this.showInsertForm       = false;
-        this.editingItemCode      = null;
-        this.insertingProcessItem = null;
-        this.editingProcessItem   = null;
-        this.cdr.detectChanges();
+        this.pendingChanges  = [];
+        this.showInsertForm  = false;
+        this.editingItemCode = null;
+        this.loadItems();
       },
-      error: (err) => { alert('Failed to delete all items.'); console.error(err); }
+      error: () => alert('Failed to delete all items.')
     });
   }
 
-  // ════════════════════════════════════════
-  // PROCESS INSERT — POST /api/Item/{code}/processes
-  // ════════════════════════════════════════
-  openInsertProcess(item: Item): void {
-    this.editingProcessSeq    = null;
-    this.editingProcessItem   = null;
-    this.insertProcessForm1   = { code: '', type: 1, supplierCode: '' };
-    this.insertingProcess     = item;
-  }
-
-  openInsertProcessBetween(item: any, process: any): void {
-    this.editingProcessItem = null;
-    this.editingProcessSeq  = null;
-    if (this.insertingProcessItem === item && this.insertAfterSeq === process.seq) {
-      this.insertingProcessItem = null;
-      this.insertAfterSeq       = null;
-    } else {
-      this.insertingProcessItem = item;
-      this.insertAfterSeq       = process.seq;
-      this.insertProcessForm    = { code: '', type: 1, supplierCode: '' };
-    }
-  }
-
-  openInsertProcessAtEnd(item: Item): void {
-    this.editingProcessItem   = null;
-    this.editingProcessSeq    = null;
-    this.insertAfterSeq       = null;
-    this.insertingProcessItem = item;
-    this.insertProcessForm    = { code: '', type: 1, supplierCode: '' };
-  }
-
-  onInsertProcessSave(item: any): void {
-      if (!this.insertProcessForm.code.trim()) return;
-    if (this.insertProcessForm.type === 2 && !this.insertProcessForm.supplierCode.trim()) {
-      alert('External processes require a supplier code.');
-      return;
-    }
-    if (this.insertProcessForm.type !== 1 && this.insertProcessForm.type !== 2) {
-      alert('Process type must be Internal (1) or External (2).');
-      return;
-    }
-    //i want to add the condition like if the code already exists in the same item then it will show the alert message that process code already exists.
-      if (item.processes.some((p: any) => p.code.toUpperCase() === this.insertProcessForm.code.trim().toUpperCase())) {
-      alert(`Process "${this.insertProcessForm.code.trim()}" already exists.`);
-      return;
-    }
-
-
-    const payload = {
-      insertAfterSeq: this.insertAfterSeq,
-      newProcess: {
-        seq:          0,
-        code:         this.insertProcessForm.code.trim().toUpperCase(),
-        type:         this.insertProcessForm.type,
-        supplierCode: this.insertProcessForm.type === 2
-          ? this.insertProcessForm.supplierCode : null
-      }
-    };
-
-    this.http.post<any>(`${this.apiUrl}/${item.code}/processes`, payload).subscribe({
-      next: (updatedItem) => {
-        item.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-          seq:          p.seq          ?? p.Seq,
-          code:         p.code         ?? p.Code,
-          type:         p.type         ?? p.Type,
-          supplierCode: p.supplierCode ?? p.SupplierCode ?? null
-        }));
-        this.insertAfterSeq       = null;
-        this.insertingProcessItem = null;
-        this.cdr.detectChanges();
-      },
-      error: (err) => { alert('Failed to insert process.'); console.error(err); }
-    });
-  }
-
-  onInsertProcessCancel(): void {
-    this.insertingProcessItem = null;
-    this.insertAfterSeq       = null;
-    this.insertProcessForm    = { code: '', type: 1, supplierCode: '' };
-  }
-
-  trackProcess(index: number, process: any): number { return process.seq; }
-
-  // ════════════════════════════════════════
-  // PROCESS EDIT — PUT /api/Item/{code}/processes/{seq}
-  // ════════════════════════════════════════
-  openEditProcess(item: Item, process: Process): void {
-    this.insertingProcessItem = null;
-    this.insertAfterSeq       = null;
-    if (this.editingProcessSeq === process.seq && this.editingProcessItem === item) {
-      this.editingProcessSeq  = null;
-      this.editingProcessItem = null;
-    } else {
-      this.editingProcessSeq  = process.seq;
-      this.editingProcessItem = item;
-      this.editProcessForm    = {
-        code:         process.code,
-        type:         process.type,
-        supplierCode: process.supplierCode ?? ''
-      };
-    }
-  }
-
-  onEditProcessSave(item: Item, process: Process): void {
-    const code = this.editProcessForm.code.trim().toUpperCase();
-    if (!code) return;
-    if (this.editProcessForm.type === 2 && !this.editProcessForm.supplierCode.trim()) {
-      alert('External processes require a supplier code.');
-      return;
-    }
-    if (this.editProcessForm.type !== 1 && this.editProcessForm.type !== 2) {
-      alert('Process type must be Internal (1) or External (2).');
-      return;
-    }
-    if (code !== process.code && item.processes.some((p: any) => p.code.toUpperCase() === code)) {
-      alert(`Process "${code}" already exists.`);
-      return;
-    }
-
-
-    const payload = {
-      seq:          process.seq,
-      code,
-      type:         this.editProcessForm.type,
-      supplierCode: this.editProcessForm.type === 2
-        ? (this.editProcessForm.supplierCode.trim() || null) : null
-    };
-
-    this.http.put<any>(`${this.apiUrl}/${item.code}/processes/${process.seq}`, payload).subscribe({
-      next: (updatedItem) => {
-        item.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-          seq:          p.seq          ?? p.Seq,
-          code:         p.code         ?? p.Code,
-          type:         p.type         ?? p.Type,
-          supplierCode: p.supplierCode ?? p.SupplierCode ?? null
-        }));
-        this.editingProcessSeq  = null;
-        this.editingProcessItem = null;
-        this.cdr.detectChanges();
-      },
-      error: (err) => { alert('Failed to update process.'); console.error(err); }
-    });
-  }
-
-  onEditProcessCancel(): void {
-    this.editingProcessSeq  = null;
-    this.editingProcessItem = null;
-  }
-
-  // ════════════════════════════════════════
-  // PROCESS DELETE — DELETE /api/Item/{code}/processes/{seq}
-  // ════════════════════════════════════════
-  deleteProcess(item: Item, process: Process): void {
-    if (!confirm(`Delete process "${process.code}"?`)) return;
-
-    this.http.delete<any>(`${this.apiUrl}/${item.code}/processes/${process.seq}`).subscribe({
-      next: (updatedItem) => {
-        item.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-          seq:          p.seq          ?? p.Seq,
-          code:         p.code         ?? p.Code,
-          type:         p.type         ?? p.Type,
-          supplierCode: p.supplierCode ?? p.SupplierCode ?? null
-        }));
-        if (this.editingProcessSeq === process.seq && this.editingProcessItem === item) {
-          this.editingProcessSeq  = null;
-          this.editingProcessItem = null;
-        }
-        this.cdr.detectChanges();
-      },
-      error: (err) => { alert('Failed to delete process.'); console.error(err); }
-    });
-  }
-
-  // ════════════════════════════════════════
-  // BULK UPDATE MODAL (existing)
-  // PUT /api/Item/{code}/processes  per item
-  // ════════════════════════════════════════
-  openBulkUpdate(): void {
-    this.bulkEditItems       = JSON.parse(JSON.stringify(this.items.filter(i => i.selected)));
-    this.showBulkUpdateModal = true;
-  }
-
-  addProcessToBulkItem(item: any): void {
-    item.processes.push({ seq: item.processes.length + 1, code: '', type: 1, supplierCode: '' });
-  }
-
-  removeProcessFromBulkItem(item: any, index: number): void {
-    item.processes.splice(index, 1);
-    item.processes.forEach((p: any, i: number) => p.seq = i + 1);
-  }
-
-  insertProcessInBulkItem(item: any, index: number): void {
-    item.processes.splice(index + 1, 0, { seq: 0, code: '', type: 1, supplierCode: '' });
-    item.processes.forEach((p: any, i: number) => p.seq = i + 1);
-  }
-
-  applyBulkProcessUpdate(): void {
-    if (!confirm(`Save changes to all ${this.bulkEditItems.length} items?`)) return;
-    if (this.bulkEditItems.some(i => i.processes.some((p: any) => !p.code.trim()))) {
-      alert('All processes must have a code.');
-      return;
-    }
-    if (this.bulkEditItems.some(i => i.processes.some((p: any) => p.type === 2 && !p.supplierCode.trim()))) {
-      alert('All external processes must have a supplier code.');
-      return;
-    }
-    if (this.bulkEditItems.some(i => i.processes.some((p: any) => p.type !== 1 && p.type !== 2))) {
-      alert('All processes must have a valid type (1 or 2).');
-      return;
-    }
-    if (this.bulkEditItems.some(i => i.processes.some((p: any) => p.code.trim() === ''))) {
-      alert('All processes must have a code.');
-      return;
-    }
-
-    const requests = this.bulkEditItems.map(editedItem =>
-      this.http.put<any>(
-        `${this.apiUrl}/${editedItem.code}/processes`,
-        editedItem.processes
-      ).toPromise()
-    );
-
-    Promise.all(requests).then(results => {
-      results.forEach((updatedItem: any) => {
-        const mainItem = this.items.find(i =>
-          i.code === (updatedItem.code ?? updatedItem.Code));
-        if (mainItem) {
-          mainItem.processes = (updatedItem.processes ?? updatedItem.Processes).map((p: any) => ({
-            seq:          p.seq          ?? p.Seq,
-            code:         p.code         ?? p.Code,
-            type:         p.type         ?? p.Type,
-            supplierCode: p.supplierCode ?? p.SupplierCode ?? null
-          }));
-        }
-      });
-      this.showBulkUpdateModal = false;
-      this.clearSelection();
-      this.cdr.detectChanges();
-    }).catch(err => {
-      alert('One or more updates failed.');
-      console.error(err);
-    });
-  }
-  //=========================================
-  // bulk delete model
-  //=========================================
   deleteSelectedItems(): void {
     if (!confirm(`Delete all ${this.getSelectedCount()} selected items?`)) return;
-
-    const requests = this.items.filter(i => i.selected)
-      .map(i => this.http.delete(`${this.apiUrl}/${i.code}`).toPromise());
-    Promise.all(requests).then(() => {
-      this.items = this.items.filter(i => !i.selected);
-      this.cdr.detectChanges();
-    }).catch(err => {
-      alert('Failed to delete one or more items.');
-      console.error(err);
-    });
-
+    const selected = this.items.filter(i => i.selected);
+    const removedCodes = selected.map(i => i.code);
+    Promise.all(selected.map(i => this.http.delete(`${this.apiUrl}/${i.code}`).toPromise()))
+      .then(() => {
+        this.pendingChanges = this.pendingChanges.filter(p => !removedCodes.includes(p.itemCode));
+        this.loadItems();
+      })
+      .catch(() => alert('Failed to delete one or more items.'));
   }
-    
-
 
   // ════════════════════════════════════════
-  // BULK ADD MODAL 
-  // POST /api/Item/bulk
+  // BULK ADD MODAL
   // ════════════════════════════════════════
-
   openBulkAddModal(): void {
-    this.bulkAddItems  = [];
-    this.bulkAddError  = '';
-    this.bulkAddSaving = false;
-    this.bulkAddNextId = 1;
-    this.addBulkDraftItem();          // start with one blank item row
+    this.bulkAddItems = []; this.bulkAddError = ''; this.bulkAddSaving = false; this.bulkAddNextId = 1;
+    this.addBulkDraftItem();
     this.showBulkAddModal = true;
   }
-
   addBulkDraftItem(): void {
-    this.bulkAddItems.push({
-      id:        this.bulkAddNextId++,
-      code:      '',
-      badge:     '',
-      processes: [this.emptyDraftProcess()]
-    });
+    this.bulkAddItems.push({ id: this.bulkAddNextId++, code: '', badge: '', processes: [this.emptyDraftProcess()] });
   }
-
-  removeBulkDraftItem(id: number): void {
-    this.bulkAddItems = this.bulkAddItems.filter(i => i.id !== id);
-  }
-
-  onBulkItemCodeChange(item: DraftItem): void {
-    item.badge = item.code.trim()
-      ? item.code.trim().charAt(0).toUpperCase()
-      : '';
-  }
-
-  addProcessToDraftItem(item: DraftItem): void {
-    item.processes.push(this.emptyDraftProcess());
-  }
-
-  removeProcessFromDraftItem(item: DraftItem, index: number): void {
-    item.processes.splice(index, 1);
-  }
-
-  private emptyDraftProcess(): DraftProcess {
-    return { code: '', type: 1, supplierCode: '' };
-  }
+  removeBulkDraftItem(id: number): void { this.bulkAddItems = this.bulkAddItems.filter(i => i.id !== id); }
+  onBulkItemCodeChange(item: DraftItem): void { item.badge = item.code.trim() ? item.code.trim().charAt(0).toUpperCase() : ''; }
+  addProcessToDraftItem(item: DraftItem): void { item.processes.push(this.emptyDraftProcess()); }
+  removeProcessFromDraftItem(item: DraftItem, index: number): void { item.processes.splice(index, 1); }
+  private emptyDraftProcess(): DraftProcess { return { code: '', type: 1, supplierCode: '' }; }
 
   private validateBulkAdd(): string {
-    if (!this.bulkAddItems.length)
-      return 'Add at least one item.';
-
-    const seenCodes: string[] = [];
-
+    if (!this.bulkAddItems.length) return 'Add at least one item.';
+    const seen: string[] = [];
     for (const item of this.bulkAddItems) {
       const code = item.code.trim().toUpperCase();
-
-      if (!code)
-        return 'All item codes are required.';
-
-      if (seenCodes.includes(code))
-        return `Duplicate item code: "${code}".`;
-      seenCodes.push(code);
-      if (this.items.some(i => i.code.toUpperCase() === code))
-        return `Item code "${code}" already exists.`;
-
-      if (!item.processes.length)
-        return `Item "${code}" must have at least one process.`;
-      if (item.processes.some(p => !p.code.trim()))
-        return `All processes in item "${code}" must have a code.`;
-      if (item.processes.some(p => p.type === 2 && !p.supplierCode.trim()))
-        return `All external processes in item "${code}" must have a supplier code.`;
-      if (item.processes.some(p => p.type !== 1 && p.type !== 2))
-        return `All processes in item "${code}" must have a valid type (1 or 2).`;
-      if (item.processes.some(p => p.code.trim() === ''))
-        return `All processes in item "${code}" must have a code.`;
-      if (item.processes.some(p => p.code.trim() && item.processes.filter((pp: any) => pp.code.trim().toUpperCase() === p.code.trim().toUpperCase()).length > 1))
-        return `Duplicate process code `;
-
+      if (!code) return 'All item codes are required.';
+      if (seen.includes(code)) return `Duplicate item code: "${code}".`;
+      seen.push(code);
+      if (this.items.some(i => i.code.toUpperCase() === code)) return `Item "${code}" already exists.`;
       for (let i = 0; i < item.processes.length; i++) {
         const p = item.processes[i];
-        if (!p.code.trim())
-          return `Process ${i + 1} in item "${code}" is missing a code.`;
-        if (p.type === 2 && !p.supplierCode.trim())
-          return `Process ${i + 1} in item "${code}" requires a supplier (External).`;
+        if (!p.code.trim()) return `Process ${i+1} in item "${code}" is missing a code.`;
+        if (p.type === 2 && !p.supplierCode.trim()) return `Process ${i+1} in item "${code}" requires a supplier (External).`;
       }
     }
     return '';
@@ -732,37 +658,44 @@ filterProcesses(processes: Process[]): Process[] {
   submitBulkAdd(): void {
     this.bulkAddError = this.validateBulkAdd();
     if (this.bulkAddError) return;
-
     this.bulkAddSaving = true;
-
     const payload = this.bulkAddItems.map(item => ({
       code: item.code.trim().toUpperCase(),
       processes: item.processes.map((p, i) => ({
-        seq:          i + 1,
-        code:         p.code.trim().toUpperCase(),
-        type:         p.type,
+        seq: i+1, code: p.code.trim().toUpperCase(), type: p.type,
         supplierCode: p.type === 2 ? (p.supplierCode.trim() || null) : null
       }))
     }));
-
     this.http.post<any[]>(`${this.apiUrl}/bulk`, payload).subscribe({
-      next: (createdItems) => {
-        const mapped = createdItems.map(i => this.mapItem(i));
-        this.items.unshift(...mapped);
-        this.bulkAddSaving    = false;
+      next: () => {
+        this.bulkAddSaving   = false;
         this.showBulkAddModal = false;
-        this.bulkAddItems     = [];
-        this.bulkAddError     = '';
-        this.cdr.detectChanges();
+        this.bulkAddItems    = [];
+        this.bulkAddError    = '';
+        this.loadItems();
       },
       error: (err) => {
         this.bulkAddSaving = false;
-        this.bulkAddError  = err.status === 409
+        this.bulkAddError = err.status === 409
           ? (err.error?.message ?? 'One or more item codes already exist.')
           : (err.error?.message ?? 'Failed to save. Please try again.');
-        console.error(err);
       }
     });
   }
 
+  // kept for template compatibility
+  openBulkUpdate(): void { this.bulkEditItems = JSON.parse(JSON.stringify(this.items.filter(i => i.selected))); this.showBulkUpdateModal = true; }
+  addProcessToBulkItem(item: any): void { item.processes.push({ seq: item.processes.length+1, code: '', type: 1, supplierCode: '' }); }
+  removeProcessFromBulkItem(item: any, index: number): void { item.processes.splice(index,1); item.processes.forEach((p:any,i:number)=>p.seq=i+1); }
+  insertProcessInBulkItem(item: any, index: number): void { item.processes.splice(index+1,0,{seq:0,code:'',type:1,supplierCode:''}); item.processes.forEach((p:any,i:number)=>p.seq=i+1); }
+  applyBulkProcessUpdate(): void {
+    Promise.all(this.bulkEditItems.map(e => this.http.put<any>(`${this.apiUrl}/${e.code}/processes`, e.processes).toPromise()))
+      .then(results => {
+        results.forEach((u:any) => {
+          const m = this.items.find(i => i.code===(u.code??u.Code));
+          if (m) m.processes=(u.processes??u.Processes).map((p:any)=>({seq:p.seq??p.Seq,code:p.code??p.Code,type:p.type??p.Type,supplierCode:p.supplierCode??p.SupplierCode??null}));
+        });
+        this.showBulkUpdateModal=false; this.clearSelection(); this.cdr.detectChanges();
+      }).catch(()=>alert('One or more updates failed.'));
+  }
 }
