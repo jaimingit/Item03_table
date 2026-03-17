@@ -133,31 +133,70 @@
           <i class="bi bi-exclamation-circle-fill"></i> {{ item01Error }}
         </div>
 
-        <!-- ADD — search input for dropdown -->
-        <div *ngIf="!item01Error && item01Options.length > 0" class="mb-2">
-          <input type="text" class="ipt" placeholder="Search items…" [(ngModel)]="item01SearchTerm"
-            (ngModelChange)="onItem01Search($event)" style="width: 100%;" />
-        </div>
+        <!-- Search box -->
+<div class="mb-1" *ngIf="!item01Error">
+  <input
+    type="text"
+    class="ipt"
+    placeholder="Search items…"
+    [ngModel]="item01SearchTerm"
+    (ngModelChange)="onItem01Search($event)"
+    style="width:100%;" />
+</div>
 
-        <!-- dropdown + badge row -->
-        <div *ngIf="!item01DropdownLoading || item01Options.length > 0" class="d-flex align-items-center gap-2 mb-2">
-          <!-- badge updates as user picks -->
-          <div class="i-badge flex-shrink-0" [style.background]="insertBadge ? 'var(--accent)' : 'var(--border-md)'"
-            [style.color]="insertBadge ? '#fff' : 'var(--faint)'">
-            {{ insertBadge || '?' }}
-          </div>
+<!-- Badge + custom scrollable dropdown -->
+<div class="d-flex align-items-start gap-2 mb-2" *ngIf="!item01Error">
+  <div class="i-badge flex-shrink-0 mt-1"
+    [style.background]="insertBadge ? 'var(--accent)' : 'var(--border-md)'"
+    [style.color]="insertBadge ? '#fff' : 'var(--faint)'">
+    {{ insertBadge || '?' }}
+  </div>
 
-          <!-- ADD — scrollable dropdown with lazy loading -->
-          <select class="ipt ipt-sel-dd flex-grow-1" [(ngModel)]="insertSelectedCode" (ngModelChange)="insertError = ''"
-            (scroll)="onDropdownScroll($event)" #dropdownContainer>
-            <option value="" disabled selected>— Select item —</option>
-            <option *ngFor="let opt of item01Options" [value]="opt.code" [disabled]="isItemAlreadyAdded(opt.code)">
-              {{ opt.code }}{{ opt.name ? ' · ' + opt.name : '' }}{{ isItemAlreadyAdded(opt.code) ? ' ✓' : '' }}
-            </option>
-            <!-- ADD — show loading indicator at end of list -->
-            <option *ngIf="item01DropdownLoading && item01Options.length > 0" disabled>Loading more…</option>
-          </select>
-        </div>
+  <!-- Custom scrollable list -->
+  <div class="dd-list-wrap flex-grow-1"
+    (scroll)="onDropdownScroll($event)">
+
+    <!-- No results -->
+    <div *ngIf="!item01DropdownLoading && item01Options.length === 0"
+      class="dd-empty">
+      No items found
+    </div>
+
+    <!-- Options -->
+    <div *ngFor="let opt of item01Options"
+      class="dd-option"
+      [class.dd-option-selected]="insertSelectedCode === opt.code"
+      [class.dd-option-disabled]="isItemAlreadyAdded(opt.code)"
+      (click)="!isItemAlreadyAdded(opt.code) ? (insertSelectedCode = opt.code) : null; insertError = ''">
+      <span [class.text-muted]="isItemAlreadyAdded(opt.code)">
+        <strong>{{ opt.code }}</strong>
+        <span *ngIf="opt.name" class="dd-opt-name">· {{ opt.name }}</span>
+      </span>
+      <span *ngIf="isItemAlreadyAdded(opt.code)" class="dd-opt-tag">✓ added</span>
+      <span *ngIf="insertSelectedCode === opt.code && !isItemAlreadyAdded(opt.code)" class="dd-opt-check">
+        <i class="bi bi-check2"></i>
+      </span>
+    </div>
+
+    <!-- Loading spinner -->
+    <div *ngIf="item01DropdownLoading"
+      class="dd-loading">
+      <div class="aim-spinner"></div>
+      Loading…
+    </div>
+
+    <!-- End of list -->
+    <div *ngIf="!item01HasMore && !item01DropdownLoading && item01Options.length > 0"
+      class="dd-end">
+      — end of list —
+    </div>
+  </div>
+</div>
+
+<!-- Selected value display -->
+<div *ngIf="insertSelectedCode" class="dd-selected-display mb-2">
+  <i class="bi bi-check-circle-fill"></i> Selected: <strong>{{ insertSelectedCode }}</strong>
+</div>
 
         <!-- inline error -->
         <div class="field-error mb-2" *ngIf="insertError">

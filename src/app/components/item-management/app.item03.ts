@@ -346,7 +346,7 @@ discardPendingForItem(itemCode: string): void {
   // ──────────────────────────────────────────────
 onDropdownScroll(event: Event): void {
   const el = event.target as HTMLElement;
-  const nearBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 80;
+  const nearBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 60;
   if (nearBottom && this.item01HasMore && !this.item01DropdownLoading) {
     this.item01Page++;
     this.loadItem01DropdownPage();
@@ -883,11 +883,15 @@ get pendingItemCodes(): string[] {
   // ITEM INSERT (inline form with dropdown)
   // ════════════════════════════════════════
   openInsertForm(): void {
-    this.editingItemCode = null;
-    this.insertSelectedCode = '';
-    this.insertError = '';
-    this.showInsertForm = true;
-  }
+  this.editingItemCode = null;
+  this.insertSelectedCode = '';
+  this.insertError = '';
+  this.item01SearchTerm = '';
+  this.item01Page = 1;
+  this.item01Options = [];
+  this.showInsertForm = true;
+  this.loadItem01DropdownPage();
+}
 
   onInsertSave(): void {
     const code = this.insertSelectedCode.trim().toUpperCase();
