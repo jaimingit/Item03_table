@@ -11,10 +11,17 @@
     <span class="brand-label fw-bold text-white" style="font-size:14.5px;letter-spacing:.02em;">Item Process
       Management</span>
   </div>
+
+  <!-- MODIFY — replace hdr-search div with enhanced search -->
   <div class="hdr-search flex-grow-1" style="max-width:300px;margin:0 auto;">
     <i class="bi bi-search"></i>
     <input type="text" placeholder="Search items or processes…" [(ngModel)]="searchTerm" />
+    <!-- ADD — clear button, only shows when searchTerm has value -->
+    <button *ngIf="searchTerm" class="hdr-search-clear" (click)="searchTerm = ''" title="Clear search">
+      <i class="bi bi-x-lg"></i>
+    </button>
   </div>
+
   <div class="d-flex gap-2 flex-shrink-0">
     <button class="btn-a bulk-add-btn" (click)="openBulkAddModal()">
       <i class="bi bi-collection-fill"></i><span>Add Item</span>
@@ -115,30 +122,40 @@
       <div class="ie-form" *ngIf="showInsertForm">
 
         <!-- loading state -->
-        <div *ngIf="item01Loading" class="d-flex align-items-center gap-2 py-1 text-muted" style="font-size:12px;">
+        <div *ngIf="item01DropdownLoading && item01Options.length === 0"
+          class="d-flex align-items-center gap-2 py-1 text-muted" style="font-size:12px;">
           <div class="aim-spinner" style="border-color:rgba(37,99,235,.25);border-top-color:var(--accent);"></div>
           Loading items…
         </div>
 
         <!-- load error -->
-        <div *ngIf="item01Error && !item01Loading" class="field-error mb-2">
+        <div *ngIf="item01Error && !item01DropdownLoading" class="field-error mb-2">
           <i class="bi bi-exclamation-circle-fill"></i> {{ item01Error }}
         </div>
 
+        <!-- ADD — search input for dropdown -->
+        <div *ngIf="!item01Error && item01Options.length > 0" class="mb-2">
+          <input type="text" class="ipt" placeholder="Search items…" [(ngModel)]="item01SearchTerm"
+            (ngModelChange)="onItem01Search($event)" style="width: 100%;" />
+        </div>
+
         <!-- dropdown + badge row -->
-        <div *ngIf="!item01Loading" class="d-flex align-items-center gap-2 mb-2">
+        <div *ngIf="!item01DropdownLoading || item01Options.length > 0" class="d-flex align-items-center gap-2 mb-2">
           <!-- badge updates as user picks -->
           <div class="i-badge flex-shrink-0" [style.background]="insertBadge ? 'var(--accent)' : 'var(--border-md)'"
             [style.color]="insertBadge ? '#fff' : 'var(--faint)'">
             {{ insertBadge || '?' }}
           </div>
 
-          <select class="ipt ipt-sel-dd flex-grow-1" [(ngModel)]="insertSelectedCode"
-            (ngModelChange)="insertError = ''">
+          <!-- ADD — scrollable dropdown with lazy loading -->
+          <select class="ipt ipt-sel-dd flex-grow-1" [(ngModel)]="insertSelectedCode" (ngModelChange)="insertError = ''"
+            (scroll)="onDropdownScroll($event)" #dropdownContainer>
             <option value="" disabled selected>— Select item —</option>
             <option *ngFor="let opt of item01Options" [value]="opt.code" [disabled]="isItemAlreadyAdded(opt.code)">
               {{ opt.code }}{{ opt.name ? ' · ' + opt.name : '' }}{{ isItemAlreadyAdded(opt.code) ? ' ✓' : '' }}
             </option>
+            <!-- ADD — show loading indicator at end of list -->
+            <option *ngIf="item01DropdownLoading && item01Options.length > 0" disabled>Loading more…</option>
           </select>
         </div>
 
@@ -150,7 +167,7 @@
         <!-- action buttons -->
         <div class="d-flex gap-2">
           <button class="btn-a primary sm flex-grow-1 justify-content-center"
-            [disabled]="!insertSelectedCode || item01Loading" (click)="onInsertSave()">
+            [disabled]="!insertSelectedCode || item01DropdownLoading" (click)="onInsertSave()">
             <i class="bi bi-check2"></i> Save
           </button>
           <button class="btn-a ghost sm flex-grow-1 justify-content-center" (click)="onInsertCancel()">Cancel</button>
@@ -169,6 +186,9 @@
               {{ item.processes.length }} process{{ item.processes.length !== 1 ? 'es' : '' }}
               <span *ngIf="getPendingCountForItem(item) > 0" class="item-pending-badge">
                 {{ getPendingCountForItem(item) }} pending
+              </span>
+              <span *ngIf="hasItemSaveError(item.code)" class="item-error-badge">
+                <i class="bi bi-exclamation-circle-fill"></i> {{ getItemSaveError(item.code) }}
               </span>
             </div>
           </div>
@@ -265,7 +285,8 @@
                 </tr>
               </thead>
               <tbody>
-                <ng-container *ngFor="let process of filterProcesses(item.processes)">
+                <!-- MODIFY — replace filterProcesses with getPaginatedProcesses in tbody ngFor -->
+                <ng-container *ngFor="let process of getPaginatedProcesses(item)">
 
                   <!-- INSERT BEFORE this process -->
                   <ng-container *ngFor="let ins of getPendingInsertsBefore(item, process.seq)">
@@ -306,8 +327,8 @@
                   <!-- DATA ROW -->
                   <tr [class.row-has-pending-edit]="isPendingEdit(item, process)"
                     [class.row-has-pending-delete]="isPendingDelete(item, process)">
-                    <!-- MODIFY — replace the seq <td> inside the DATA ROW -->
-                    <!-- MODIFY — replace seq <td> in DATA ROW -->
+
+                    <!-- MODIFY — seq input with validation -->
                     <td>
                       <input type="number" class="ipt seq-ipt" [min]="1" [max]="item.processes.length"
                         [value]="getReseqValue(item, process)"
@@ -321,6 +342,7 @@
                         {{ getSeqError(item, process) }}
                       </div>
                     </td>
+
                     <td>
                       <span class="code-chip" [class.text-strike]="isPendingDelete(item, process)">
                         {{ process.code }}
@@ -405,49 +427,154 @@
                 </ng-container>
 
                 <!-- INSERT AT END -->
-                <ng-container *ngFor="let ins of getPendingInsertsBefore(item, null)">
-                  <tr class="row-ins row-ins-end">
-                    <td><span class="seq-b ins"><i class="bi bi-plus-circle" style="font-size:10px;"></i></span></td>
-                    <td>
-                      <input class="ipt ipt-mono" placeholder="New Process Code" [class.ipt-error]="ins.error"
-                        [(ngModel)]="ins.code" (ngModelChange)="ins.error=''">
-                      <div class="field-error" *ngIf="ins.error">
-                        <i class="bi bi-exclamation-circle-fill"></i> {{ ins.error }}
-                      </div>
-                    </td>
-                    <td>
-                      <div class="tgl">
-                        <button class="tgl-btn" [class.tgl-int]="ins.processType===1"
-                          (click)="ins.processType=1">Int</button>
-                        <button class="tgl-btn" [class.tgl-ext]="ins.processType===2"
-                          (click)="ins.processType=2">Ext</button>
-                      </div>
-                    </td>
-                    <td class="hide-md">
-                      <input *ngIf="ins.processType===2" class="ipt" placeholder="Supplier"
-                        [class.ipt-error]="ins.supplierError" [(ngModel)]="ins.supplierCode"
-                        (ngModelChange)="ins.supplierError=''">
-                      <div class="field-error" *ngIf="ins.processType===2 && ins.supplierError">
-                        <i class="bi bi-exclamation-circle-fill"></i> {{ ins.supplierError }}
-                      </div>
-                      <span *ngIf="ins.processType===1" class="text-muted">—</span>
-                    </td>
-                    <td>
-                      <div class="d-flex gap-1 justify-content-end align-items-center">
+                <!-- MODIFY — wrap INSERT AT END section with last page check -->
+                <ng-container *ngIf="getProcessPage(item.code) === getProcessTotalPages(item)">
 
-                        <button class="btn-a ghost xs" (click)="removePending(ins.id)">Cancel</button>
-                      </div>
-                    </td>
-                  </tr>
+                  <ng-container *ngFor="let ins of getPendingInsertsBefore(item, null)">
+                    <tr class="row-ins row-ins-end">
+                      <td><span class="seq-b ins"><i class="bi bi-plus-circle" style="font-size:10px;"></i></span></td>
+                      <td>
+                        <input class="ipt ipt-mono" placeholder="New Process Code" [class.ipt-error]="ins.error"
+                          [(ngModel)]="ins.code" (ngModelChange)="ins.error=''">
+                        <div class="field-error" *ngIf="ins.error">
+                          <i class="bi bi-exclamation-circle-fill"></i> {{ ins.error }}
+                        </div>
+                      </td>
+                      <td>
+                        <div class="tgl">
+                          <button class="tgl-btn" [class.tgl-int]="ins.processType===1"
+                            (click)="ins.processType=1">Int</button>
+                          <button class="tgl-btn" [class.tgl-ext]="ins.processType===2"
+                            (click)="ins.processType=2">Ext</button>
+                        </div>
+                      </td>
+                      <td class="hide-md">
+                        <input *ngIf="ins.processType===2" class="ipt" placeholder="Supplier"
+                          [class.ipt-error]="ins.supplierError" [(ngModel)]="ins.supplierCode"
+                          (ngModelChange)="ins.supplierError=''">
+                        <div class="field-error" *ngIf="ins.processType===2 && ins.supplierError">
+                          <i class="bi bi-exclamation-circle-fill"></i> {{ ins.supplierError }}
+                        </div>
+                        <span *ngIf="ins.processType===1" class="text-muted">—</span>
+                      </td>
+                      <td>
+                        <div class="d-flex gap-1 justify-content-end align-items-center">
+                          <button class="btn-a ghost xs" (click)="removePending(ins.id)">Cancel</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-container>
+
                 </ng-container>
-
+                <!-- END MODIFY -->
               </tbody>
             </table>
           </div>
         </div>
+
+        <!-- ADD — process pagination controls, after </table> -->
+        <div class="proc-pagination-wrap" *ngIf="getProcessTotalPages(item) > 1">
+
+          <div class="proc-pg-left">
+            <!-- Showing info -->
+            <span class="proc-pg-info">
+              <strong>{{ (getProcessPage(item.code) - 1) * processPageSize + 1 }}</strong>
+              –
+              <strong>{{ Math.min(getProcessPage(item.code) * processPageSize, filterProcesses(item.processes).length)
+                }}</strong>
+              of
+              <strong>{{ filterProcesses(item.processes).length }}</strong>
+              processes
+            </span>
+          </div>
+
+          <div class="proc-pg-right">
+            <!-- Previous -->
+            <button class="proc-pg-btn" [class.proc-pg-disabled]="getProcessPage(item.code) === 1"
+              [disabled]="getProcessPage(item.code) === 1"
+              (click)="goToProcessPage(item.code, getProcessPage(item.code) - 1, getProcessTotalPages(item))"
+              title="Previous">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+
+            <!-- Page Numbers -->
+            <ng-container *ngFor="let pg of getProcessPageNumbers(item)">
+              <span *ngIf="pg === -1" class="proc-pg-ellipsis">…</span>
+              <button *ngIf="pg !== -1" class="proc-pg-btn" [class.proc-pg-active]="pg === getProcessPage(item.code)"
+                (click)="goToProcessPage(item.code, pg, getProcessTotalPages(item))">
+                {{ pg }}
+              </button>
+            </ng-container>
+
+            <!-- Next -->
+            <button class="proc-pg-btn"
+              [class.proc-pg-disabled]="getProcessPage(item.code) === getProcessTotalPages(item)"
+              [disabled]="getProcessPage(item.code) === getProcessTotalPages(item)"
+              (click)="goToProcessPage(item.code, getProcessPage(item.code) + 1, getProcessTotalPages(item))"
+              title="Next">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+
+        </div>
       </ng-container>
     </ng-container>
   </section>
+</div>
+
+<!-- ADD — Custom Toast Container -->
+<div class="toast-container">
+  <div *ngFor="let toast of toasts" class="toast-item toast-{{ toast.type }}" (click)="removeToast(toast.id)">
+
+    <!-- Icon -->
+    <div class="toast-icon">
+      <i class="bi {{ toast.icon }}"></i>
+    </div>
+
+    <!-- Message -->
+    <div class="toast-msg">{{ toast.message }}</div>
+
+    <!-- Progress bar -->
+    <div class="toast-progress toast-progress-{{ toast.type }}"></div>
+
+    <!-- Close -->
+    <button class="toast-close" (click)="removeToast(toast.id)">
+      <i class="bi bi-x-lg"></i>
+    </button>
+
+  </div>
+</div>
+
+<!-- ADD — Confirm Dialog Modal -->
+<div class="modal-back" *ngIf="confirmDialog">
+  <div class="confirm-box">
+
+    <!-- Icon -->
+    <div class="confirm-icon" [class.confirm-icon-danger]="confirmDialog.danger"
+      [class.confirm-icon-info]="!confirmDialog.danger">
+      <i class="bi" [class.bi-exclamation-triangle-fill]="confirmDialog.danger"
+        [class.bi-question-circle-fill]="!confirmDialog.danger">
+      </i>
+    </div>
+
+    <!-- Title -->
+    <h3 class="confirm-title">{{ confirmDialog.title }}</h3>
+
+    <!-- Message -->
+    <p class="confirm-msg">{{ confirmDialog.message }}</p>
+
+    <!-- Buttons -->
+    <div class="confirm-actions">
+      <button class="btn-a ghost" (click)="onConfirmNo()">
+        {{ confirmDialog.cancelLabel }}
+      </button>
+      <button class="btn-a" [class.danger]="confirmDialog.danger" [class.primary]="!confirmDialog.danger"
+        (click)="onConfirmYes()">
+        {{ confirmDialog.confirmLabel }}
+      </button>
+    </div>
+
+  </div>
 </div>
 
 <!-- BULK ADD MODAL -->
@@ -477,7 +604,8 @@
         <div class="draft-card-hdr">
           <div class="draft-num">{{ itemIdx+1 }}</div>
           <div class="draft-badge" [class.empty]="!item.badge">{{ item.badge||'?' }}</div>
-          <select class="ipt ipt-sel-dd flex-grow-1" [(ngModel)]="item.code" (ngModelChange)="insertError = ''">
+          <select class="ipt ipt-sel-dd flex-grow-1" [(ngModel)]="item.code"
+            (ngModelChange)="onBulkItemCodeChange(item)">
             <option value="" disabled selected>— Select item —</option>
             <option *ngFor="let opt of item01Options" [value]="opt.code" [disabled]="isItemAlreadyAdded(opt.code)">
               {{ opt.code }}{{ opt.name ? ' · ' + opt.name : '' }}{{ isItemAlreadyAdded(opt.code) ? ' ✓' : '' }}

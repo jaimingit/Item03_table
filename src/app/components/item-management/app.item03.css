@@ -216,10 +216,32 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 }
 
+
 /* ─── Save All corner (in stat strip) ───────────────────────── */
 .save-all-corner {
   padding-left: 12px;
   border-left: 1px solid var(--border);
+}
+.item-error-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--danger, #dc2626);
+  background: rgba(220, 38, 38, 0.10);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-top: 2px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-error-badge i {
+  flex-shrink: 0;
+  font-size: 9px;
 }
 
 .pending-summary {
@@ -1407,8 +1429,11 @@ body {
 .ipt-sel-dd option:disabled {
   color: var(--faint);
   font-style: italic;
+  background-color: var(--light-gray); /* subtle background */
+  cursor: not-allowed; /* clear visual cue */
+  opacity: 0.7; /* softer appearance */
+  padding-left: 4px; /* slight spacing for readability */
 }
-
 /* inline spinner for small contexts */
 .aim-spinner {
   display: inline-block;
@@ -1543,4 +1568,345 @@ body {
   margin-top: 3px;
   white-space: nowrap;
   color: var(--danger);
+}
+/* ADD — Process pagination */
+.proc-pagination-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 0 0 12px 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.proc-pg-left {
+  flex-shrink: 0;
+}
+
+.proc-pg-right {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.proc-pg-info {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.proc-pg-info strong {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.proc-pg-btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border-md);
+  background: var(--white);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-family: var(--mono);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .13s;
+  flex-shrink: 0;
+}
+
+.proc-pg-btn:hover:not(:disabled) {
+  background: var(--accent-lt);
+  border-color: #bfdbfe;
+  color: var(--accent);
+}
+
+/* Active page */
+.proc-pg-active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 5px rgba(37, 99, 235, .25);
+}
+
+/* Disabled */
+.proc-pg-disabled {
+  opacity: .35;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.proc-pg-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 26px;
+  font-size: 12px;
+  color: var(--faint);
+  font-weight: 700;
+}
+/* ADD — Toast Container */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+/* ADD — Toast Item */
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 280px;
+  max-width: 380px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--white);
+  box-shadow: 0 6px 24px rgba(0,0,0,.13), 0 1px 4px rgba(0,0,0,.08);
+  border: 1px solid var(--border);
+  pointer-events: auto;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  animation: toastIn .25s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(60px) scale(.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* ADD — Toast Icon */
+.toast-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* ADD — Toast Message */
+.toast-msg {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* ADD — Toast Close Button */
+.toast-close {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background .13s, color .13s;
+}
+
+.toast-close:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ADD — Progress Bar */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 0 0 10px 10px;
+  width: 100%;
+  animation: toastProgress 3.5s linear forwards;
+}
+
+@keyframes toastProgress {
+  from { width: 100%; }
+  to   { width: 0%;   }
+}
+
+/* ADD — Success Toast */
+.toast-success .toast-icon {
+  background: var(--suc-lt);
+  color: var(--success);
+}
+.toast-success {
+  border-left: 3px solid var(--success);
+}
+.toast-progress-success {
+  background: var(--success);
+}
+
+/* ADD — Error Toast */
+.toast-error .toast-icon {
+  background: var(--dan-lt);
+  color: var(--danger);
+}
+.toast-error {
+  border-left: 3px solid var(--danger);
+}
+.toast-progress-error {
+  background: var(--danger);
+}
+
+/* ADD — Warning Toast */
+.toast-warning .toast-icon {
+  background: var(--warn-lt);
+  color: var(--warn);
+}
+.toast-warning {
+  border-left: 3px solid var(--warn);
+}
+.toast-progress-warning {
+  background: var(--warn);
+}
+
+/* ADD — Info Toast */
+.toast-info .toast-icon {
+  background: var(--accent-lt);
+  color: var(--accent);
+}
+.toast-info {
+  border-left: 3px solid var(--accent);
+}
+.toast-progress-info {
+  background: var(--accent);
+}
+/* ADD — Confirm Dialog */
+.confirm-box {
+  background: var(--white);
+  border-radius: 14px;
+  box-shadow: 0 20px 48px rgba(0,0,0,.18);
+  width: 100%;
+  max-width: 400px;
+  padding: 28px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: confirmIn .22s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes confirmIn {
+  from {
+    opacity: 0;
+    transform: scale(.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.confirm-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.confirm-icon-danger {
+  background: var(--dan-lt);
+  color: var(--danger);
+}
+
+.confirm-icon-info {
+  background: var(--accent-lt);
+  color: var(--accent);
+}
+
+.confirm-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.confirm-msg {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 0 0 22px;
+  line-height: 1.55;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.confirm-actions .btn-a {
+  flex: 1;
+  justify-content: center;
+}
+/* ADD — search clear button */
+.hdr-search {
+  position: relative;
+}
+
+.hdr-search-clear {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, .18);
+  color: rgba(255, 255, 255, .7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  padding: 0;
+  transition: background .13s, color .13s;
+  flex-shrink: 0;
+}
+
+.hdr-search-clear:hover {
+  background: rgba(255, 255, 255, .30);
+  color: #fff;
+}
+
+/* ADD — add right padding to input when clear button is visible */
+.hdr-search input {
+  padding-right: 30px;
 }
